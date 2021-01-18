@@ -18,6 +18,12 @@ h1 {
   margin-left: 25vw;
   margin-right: 25vw;
   text-align: center;
+  position: relative;
+}
+
+.board {
+  position: relative;
+  bottom:0;
 }
 
 .start-game {
@@ -55,8 +61,15 @@ h1 {
   box-shadow: 0px 0px 9px 5px #999;
 }
 
-#board {
-  height: 70vh;
+#board-image {
+  position: absolute;
+  height: 72vh;
   width: auto;
-  box-shadow: 0px 0px 12px 8px #ccc;
+  box-shadow: 0px 0px 8px 6px #ccc;
+}
+
+.piece {
+  position: absolute;
+  z-index: 3;
+  height: 9vh;
 }
