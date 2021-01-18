@@ -98,6 +98,11 @@ document.addEventListener('DOMContentLoaded', () => {
             while (tile.firstChild)
                 tile.removeChild(tile.lastChild);
         }
+
+        enableHighlight() {
+            let piece = document.getElementById('tile' + this.row + this.col).getElementsByTagName("*")[0];
+            piece.classList.add('tile-highlighted');
+        }
     }
 
     // A class representing a chess board
@@ -121,7 +126,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         setCurrentPosition(pos) {
+            if (this.current != null) this.disableHighlight();
+            if (pos != null)          this.getTile(pos).enableHighlight();
             this.current = pos;
+        }
+
+        disableHighlight() {
+            let piece = document.querySelector('.tile-highlighted');
+            if (piece)
+                piece.classList.remove('tile-highlighted');
         }
 
         getTile(pos) {
@@ -140,12 +153,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // This function doesn't check whether the move is valid
         movePiece(from, to) {
             if (this.hasPiece(from)) {
-                console.log(from.x + ", " + from.y);
-                console.log(to.x + ", " + to.y);
                 this.getTile(to).setPiece(this.getTile(from).getPiece());
                 this.getTile(from).deletePiece();
                 move = (move == 'white' ? 'black' : 'white');
-                this.current = null;
+                this.setCurrentPosition(null);
             }
         }
 
@@ -166,8 +177,6 @@ document.addEventListener('DOMContentLoaded', () => {
         // Generates HTML elements of the board by appending
         // structures to the specified parent
         generateView(parent) {
-            console.log(this.tiles);
-            console.log(parent);
             for (var row = this.getRows(); row > 0; row--)
                 for (var col = 1; col <= this.getCols(); col++) {
                     this.tiles[row - 1][col - 1].generateView(parent);
@@ -185,7 +194,6 @@ document.addEventListener('DOMContentLoaded', () => {
         let box = boardDiv.getBoundingClientRect();
         let currentPosition = board.getCurrentPosition();
         let newPosition = new Position(1 + Math.floor((event.clientX - box.x) / 80), 8 - Math.floor((event.clientY - box.y) / 80));
-        console.log("new:" + newPosition.x + "," + newPosition.y);
 
         if (currentPosition != null && (!board.hasPiece(newPosition) || board.getPiece(newPosition).getColor() != move))
             board.movePiece(currentPosition, newPosition);

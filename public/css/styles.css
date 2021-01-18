@@ -89,3 +89,7 @@ h1 {
   background-size: 80px 80px;
   opacity: 0.90;
 }
+
+.tile-highlighted {
+  background-color: rgba(87, 173, 29, 0.5);
+}
