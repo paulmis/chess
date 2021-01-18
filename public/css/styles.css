@@ -21,11 +21,6 @@ h1 {
   position: relative;
 }
 
-.board {
-  position: relative;
-  bottom:0;
-}
-
 .start-game {
   display: grid;
   margin-top: 12vh;
@@ -68,8 +63,35 @@ h1 {
   box-shadow: 0px 0px 8px 6px #ccc;
 }
 
+.board {
+  position: relative;
+  height: 640px;
+  width: 640px;
+}
+
+.tiles {
+  display: grid;
+  height: 640px;
+  width: 640px;
+  grid-template-columns: repeat(auto-fill, 80px);
+}
+
+.tile {
+  height: 80px;
+  width: 80px;
+}
+
+.tile-black {
+  background-color: #AA7C56;
+}
+
+.tile-white {
+  background: #E9D4B4;
+}
+
 .piece {
   position: absolute;
   z-index: 3;
-  height: 9vh;
+  height: 80px;
+  width: 80px;
 }
