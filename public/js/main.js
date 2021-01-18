@@ -16,6 +16,7 @@ function InitialPiece(col, row) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    const board = document.querySelector('.board')
     const tiles = document.querySelector('.tiles')
     const pieces = document.querySelector('.pieces')
 
@@ -33,15 +34,51 @@ document.addEventListener('DOMContentLoaded', () => {
     for (var row = 1; row <= 8; row++)
         for (var col = 1; col <= 8; col++){
             var tile = document.getElementById('tile' + row + col);
-            var pieceInstance = document.createElement('img');
             var piece = new InitialPiece(col, row);
 
             // Check if there should be a piece at all
             if (piece.type != null) {
-                pieceInstance.src = 'img/pieces/' + piece.color + '/' + piece.type + '.svg';
+                var pieceInstance = document.createElement('div');
+                pieceInstance.style.backgroundImage = 'url(\'img/pieces/' + piece.color + '/' + piece.type + '.svg\')';
                 pieceInstance.setAttribute('class', 'piece');
                 tile.appendChild(pieceInstance);
             }
         }
-})
 
+    function tileHasPiece(row, col) {
+        let tile = document.getElementById('tile' + row + col);
+        return tile.childNodes.length != 0;
+    }
+
+    function tileGetPiece(row, col) {
+        if (!tileHasPiece(row, col))
+            return null;
+        let tile = document.getElementById('tile' + row + col);
+        return tile.childNodes[0];
+    }
+
+    var currentPosition = null
+    function onClick(event) {
+        let box = board.getBoundingClientRect();
+        let row = 8 - Math.floor((event.clientY-box.y) / 80);
+        let col = 1 + Math.floor((event.clientX-box.x) / 80);
+        
+        if (currentPosition != null && tileHasPiece(currentPosition.row, currentPosition.col)) {
+            var piece = tileGetPiece(currentPosition.row, currentPosition.col);
+            if (tileHasPiece(row, col))
+                document.getElementById('tile' + row + col).childNodes[0].remove();
+            document.getElementById('tile' + row + col).appendChild(piece);
+            currentPosition = null;
+        }
+        else {
+            var from = document.getElementById('tile' + row + col);
+            if (from.childNodes.length != 0)
+                currentPosition = {
+                    'row': row,
+                    'col': col
+                };
+        }
+    }
+
+    board.addEventListener("click", onClick);
+});
