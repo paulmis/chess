@@ -1,30 +1,21 @@
-<!doctype html>
-
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>Chess</title>
-  <meta name="description" content="Landing page">
-  <link rel="stylesheet" href="css/styles.css">
-  <link rel="icon" href="img/logo.png">
-  <link rel="preconnect" href="https://fonts.gstatic.com">
-  <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
-</head>
-<body>
-    <div class="main-content">
-        <div class="description">
-            <h1>Chess</h1>
-        </div>
-        <div class="start-game">
-            <div class="game-square" id="new-game" style="cursor: pointer;" onclick="window.location='game.html';">
-                <p>Create</p>
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+        <meta name="description" content="Landing page">
+        <title>Chess</title>
+        <link rel="stylesheet" href="css/splash.css">
+    </head>
+    <body>
+        <div class="main-content">
+            <div class="description">
+                <h1 id="sth-funky">Chess</h1>
             </div>
-            <div class="game-square" id="join-game">
-                <p>Join</p>
+            <div class="start-game">
+                <input type="button" value="Create" class="game-square" id="new-game" style="cursor: pointer;" onclick="createF()">
+                <input type="button" value="Join" class="game-square" id="join-game" onclick="joinF()">
             </div>
         </div>
-    </div>
-  <script src="js/main.js"></script>
-</body>
+        <script src="js/splash.js"></script>
+    </body>
 </html>
