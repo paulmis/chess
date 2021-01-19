@@ -27,6 +27,10 @@ document.addEventListener('DOMContentLoaded', () => {
             return this.color;
         }
 
+        getType() {
+            return this.type;
+        }
+
         // Returns the piece default to a given position 
         static getInitialPiece(row, col) {
             let color = row > 4 ? 'black' : 'white';
@@ -149,10 +153,86 @@ document.addEventListener('DOMContentLoaded', () => {
             return this.getPiece(pos) != null;
         }
 
+        // Checks whether the move is valid
+        // TODO: cleanup, checks, castles, en passant
+        validateMove(from, to) {
+            if (from.x == to.x && from.y == to.y)
+                return false;
+            if (to.x <= 0 || to.x > 8 || to.y <= 0 || to.y > 8)
+                return false;
+            
+            let piece = this.getPiece(from);
+            let color = piece.getColor();
+            console.log(from, to);
+            let dx = to.x - from.x, dy = to.y - from.y;
+            let adx = Math.abs(dx), ady = Math.abs(dy);
+            switch (piece.getType()) {
+                case 'pawn':
+                    if (color == 'white') 
+                    {
+                        console.log(Math.abs(to.x - from.x), from.y + 1 + (from.y == 2 ? 1 : 0));
+                        if (this.hasPiece(to))
+                            return Math.abs(to.x - from.x) <= 1 && to.y == from.y + 1;
+                        return to.x == from.x && to.y > from.y && to.y <= from.y + 1 + (from.y == 2 ? 1 : 0);
+                    } else {
+                        if (this.hasPiece(to))
+                            return Math.abs(to.x - from.x) <= 1 && to.y == from.y - 1;
+                        return to.x == from.x && to.y < from.y && to.y >= from.y - 1 - (from.y == 7 ? 1 : 0);
+                    }
+                case 'knight':
+                    return adx + ady == 3 && (adx == 1 || adx == 2);
+                case 'bishop':
+                    if (adx != ady) return false;
+                    var rayPosition = new Position(from.x + Math.sign(dx), from.y + Math.sign(dy));
+                    while (rayPosition.x != to.x) {
+                        if (this.hasPiece(rayPosition))
+                            return false;
+                        rayPosition.x += Math.sign(dx);
+                        rayPosition.y += Math.sign(dy);
+                    }
+                    return true;
+                case 'rook':
+                    if (adx > 0 && ady > 0) return false;
+                    var rayPosition = new Position(from.x + Math.sign(dx), from.y + Math.sign(dy));
+                    while (rayPosition.x != to.x || rayPosition.y != to.y) {
+                        console.log(rayPosition);
+                        if (this.hasPiece(rayPosition))
+                            return false;
+                        rayPosition.x += Math.sign(dx);
+                        rayPosition.y += Math.sign(dy);
+                    }
+                    return true;
+                case 'king':
+                    return adx <= 1 && ady <= 1;
+                case 'queen':
+                    if (adx != ady && adx != 0 && ady != 0) return false;
+                    var rayPosition = new Position(from.x + Math.sign(dx), from.y + Math.sign(dy));
+                    if (adx == ady) {
+                        while (rayPosition.x != to.x) {
+                            if (this.hasPiece(rayPosition))
+                                return false;
+                            rayPosition.x += Math.sign(dx);
+                            rayPosition.y += Math.sign(dy);
+                        }
+                    } else {
+                        while (rayPosition.x != to.x || rayPosition.y != to.y) {
+                            console.log(rayPosition);
+                            if (this.hasPiece(rayPosition))
+                                return false;
+                            rayPosition.x += Math.sign(dx);
+                            rayPosition.y += Math.sign(dy);
+                        }
+                        return true;
+                    }
+                default:
+                    return true;
+            }
+        }
+
         // Moves a piece from one tile to another
         // This function doesn't check whether the move is valid
         movePiece(from, to) {
-            if (this.hasPiece(from)) {
+            if (this.hasPiece(from) && this.validateMove(from, to)) {
                 this.getTile(to).setPiece(this.getTile(from).getPiece());
                 this.getTile(from).deletePiece();
                 move = (move == 'white' ? 'black' : 'white');
