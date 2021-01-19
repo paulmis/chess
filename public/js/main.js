@@ -1,7 +1,6 @@
 // @ts-check
 
 const boardRows = 8, boardCols = 8;
-let move = 'white';
 
 document.addEventListener('DOMContentLoaded', () => {
     const boardDiv = document.querySelector('.board')
@@ -109,11 +108,38 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    class Player {
+        constructor(side) {
+            this.side = side;
+            this.kingMoved = false;
+            this.hasCastled = false;
+            this.lostPieces = [];
+            this.moves = [];
+        }
+    
+        getKingMoved() {
+            return this.kingMoved;
+        }
+
+        setKingMoved() {
+            this.kingMoved = true;
+        }
+
+        setHasCastled() {
+            this.hasCastled = true;
+        }
+    }
+
     // A class representing a chess board
     class Board {
         constructor() {
             this.tiles = [];
-            this.current = null;
+            this.currentPosition = null;
+            this.currentPlayerColor = 'white';
+            this.players = {
+                'white': new Player('white'),
+                'black': new Player('black')
+            };
         }
 
         getRows() {
@@ -126,13 +152,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         getCurrentPosition() {
-            return this.current;
+            return this.currentPosition;
         }
 
         setCurrentPosition(pos) {
-            if (this.current != null) this.disableHighlight();
-            if (pos != null)          this.getTile(pos).enableHighlight();
-            this.current = pos;
+            if (this.currentPosition != null) this.disableHighlight();
+            if (pos != null)                  this.getTile(pos).enableHighlight();
+            this.currentPosition = pos;
         }
 
         disableHighlight() {
@@ -153,6 +179,14 @@ document.addEventListener('DOMContentLoaded', () => {
             return this.getPiece(pos) != null;
         }
 
+        getCurrentPlayerColor() {
+            return this.currentPlayerColor;
+        }
+
+        getCurrentPlayer() {
+            return this.players[this.currentPlayerColor];
+        }
+
         // Checks whether the move is valid
         // TODO: cleanup, checks, castles, en passant
         validateMove(from, to) {
@@ -163,14 +197,12 @@ document.addEventListener('DOMContentLoaded', () => {
             
             let piece = this.getPiece(from);
             let color = piece.getColor();
-            console.log(from, to);
             let dx = to.x - from.x, dy = to.y - from.y;
             let adx = Math.abs(dx), ady = Math.abs(dy);
             switch (piece.getType()) {
                 case 'pawn':
                     if (color == 'white') 
                     {
-                        console.log(Math.abs(to.x - from.x), from.y + 1 + (from.y == 2 ? 1 : 0));
                         if (this.hasPiece(to))
                             return Math.abs(to.x - from.x) <= 1 && to.y == from.y + 1;
                         return to.x == from.x && to.y > from.y && to.y <= from.y + 1 + (from.y == 2 ? 1 : 0);
@@ -195,7 +227,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (adx > 0 && ady > 0) return false;
                     var rayPosition = new Position(from.x + Math.sign(dx), from.y + Math.sign(dy));
                     while (rayPosition.x != to.x || rayPosition.y != to.y) {
-                        console.log(rayPosition);
                         if (this.hasPiece(rayPosition))
                             return false;
                         rayPosition.x += Math.sign(dx);
@@ -203,7 +234,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     return true;
                 case 'king':
-                    return adx <= 1 && ady <= 1;
+                    if (adx <= 1 && ady <= 1) return true;
+                    if (this.getCurrentPlayer().getKingMoved() || ady != 0 || adx != 2 ||
+                        this.getPiece(new Position(dx > 0 ? 1 : 8, from.y)).getType() != 'rook') 
+                        return false;
+                    var rayPosition = new Position(from.x + Math.sign(dx), from.y);
+                    while (rayPosition.x != to.x) {
+                        if (this.hasPiece(rayPosition))
+                            return false;
+                        rayPosition.x += Math.sign(dx);
+                    }
+                    return true;
                 case 'queen':
                     if (adx != ady && adx != 0 && ady != 0) return false;
                     var rayPosition = new Position(from.x + Math.sign(dx), from.y + Math.sign(dy));
@@ -216,7 +257,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     } else {
                         while (rayPosition.x != to.x || rayPosition.y != to.y) {
-                            console.log(rayPosition);
                             if (this.hasPiece(rayPosition))
                                 return false;
                             rayPosition.x += Math.sign(dx);
@@ -233,9 +273,26 @@ document.addEventListener('DOMContentLoaded', () => {
         // This function doesn't check whether the move is valid
         movePiece(from, to) {
             if (this.hasPiece(from) && this.validateMove(from, to)) {
-                this.getTile(to).setPiece(this.getTile(from).getPiece());
+                // Move the piece
+                var piece = this.getPiece(from);
+                this.getTile(to).setPiece(piece);
                 this.getTile(from).deletePiece();
-                move = (move == 'white' ? 'black' : 'white');
+                
+                // Check for castle
+                if (piece.getType() == 'king')
+                {
+                    this.getCurrentPlayer().setKingMoved();
+                    if (Math.abs(from.x - to.x) == 2) {
+                        var rookFrom = new Position(to.x - from.x > 0 ? 8 : 1, from.y);
+                        var rookTo = new Position(to.x - from.x > 0 ? 6 : 4, from.y);
+                        this.getTile(rookTo).setPiece(this.getPiece(rookFrom));
+                        this.getTile(rookFrom).deletePiece();
+                        this.getCurrentPlayer().setHasCastled();
+                    }
+                }
+
+                // Set move variables
+                this.currentPlayerColor = (this.currentPlayerColor == 'white' ? 'black' : 'white');
                 this.setCurrentPosition(null);
             }
         }
@@ -275,10 +332,12 @@ document.addEventListener('DOMContentLoaded', () => {
         let currentPosition = board.getCurrentPosition();
         let newPosition = new Position(1 + Math.floor((event.clientX - box.x) / 80), 8 - Math.floor((event.clientY - box.y) / 80));
 
-        if (currentPosition != null && (!board.hasPiece(newPosition) || board.getPiece(newPosition).getColor() != move))
+        console.log(currentPosition, newPosition, board.getCurrentPosition());
+
+        if (currentPosition != null && (!board.hasPiece(newPosition) || board.getPiece(newPosition).getColor() != board.getCurrentPlayerColor()))
             board.movePiece(currentPosition, newPosition);
             
-        else if (board.hasPiece(newPosition) && board.getPiece(newPosition).getColor() == move)
+        else if (board.hasPiece(newPosition) && board.getPiece(newPosition).getColor() == board.getCurrentPlayerColor())
             board.setCurrentPosition(newPosition);
     }
     boardDiv.addEventListener("click", onClick);
