@@ -13,6 +13,23 @@ document.addEventListener('DOMContentLoaded', () => {
             this.x = x;
             this.y = y;
         }
+
+        add(other) {
+            this.x += other.x;
+            this.y += other.y;
+        }
+
+        addDeep(other) {
+            return new Position(this.x + other.x, this.y + other.y);
+        }
+
+        manhattanDistance(other) {
+            return Math.abs(other.x - this.x) + Math.abs(other.y - this.y);
+        }
+
+        getDirection(to) {
+            return new Position(Math.sign(to.x - this.x), Math.sign(to.y - this.y));
+        }
     }
 
     // A class representing a chess piece
@@ -106,6 +123,10 @@ document.addEventListener('DOMContentLoaded', () => {
             let piece = document.getElementById('tile' + this.row + this.col).getElementsByTagName("*")[0];
             piece.classList.add('tile-highlighted');
         }
+
+        static valid(pos) {
+            return pos.x > 0 && pos.y > 0 && pos.x <= boardCols && pos.y <= boardRows;
+        }
     }
 
     class Player {
@@ -175,8 +196,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return this.getTile(pos).getPiece();
         }
 
-        hasPiece(pos) {
-            return this.getPiece(pos) != null;
+        hasPiece(pos, type) {
+            var piece = this.getPiece(pos);
+            return piece != null && (typeof type === "undefined" ? true : piece.getType() == type);
         }
 
         getCurrentPlayerColor() {
@@ -187,12 +209,35 @@ document.addEventListener('DOMContentLoaded', () => {
             return this.players[this.currentPlayerColor];
         }
 
+        // Returns the manhattan distance to the first element met by iteratively
+        // applying the change vector to the starting position, or null if none is met
+        lineScan(start, change) {
+            // Scan the lane following the specified change
+            console.log("start:", start, change);
+            var next = start.addDeep(change), it = 0;
+            while (Tile.valid(next) && !this.hasPiece(next))
+                next.add(change);
+            console.log("end:", next);
+            // Return the value
+            if (!Tile.valid(next)) return null;
+            return {
+                'distance': start.manhattanDistance(next),
+                'piece': this.getPiece(next)
+            };
+        }
+
+        // Checks whether there is not a piece between from and to on a straight line
+        // The line between from and to must be either parallel or diagonal to the board
+        lineMoveNotObstructed(from, to) {
+            var scanResult = this.lineScan(from, from.getDirection(to));
+            console.log(scanResult);
+            return scanResult == null || scanResult.distance >= from.manhattanDistance(to);
+        }
+        
         // Checks whether the move is valid
         // TODO: cleanup, checks, castles, en passant
         validateMove(from, to) {
-            if (from.x == to.x && from.y == to.y)
-                return false;
-            if (to.x <= 0 || to.x > 8 || to.y <= 0 || to.y > 8)
+            if (from.x == to.x && from.y == to.y || !Tile.valid(to))
                 return false;
             
             let piece = this.getPiece(from);
@@ -215,57 +260,24 @@ document.addEventListener('DOMContentLoaded', () => {
                     return adx + ady == 3 && (adx == 1 || adx == 2);
                 case 'bishop':
                     if (adx != ady) return false;
-                    var rayPosition = new Position(from.x + Math.sign(dx), from.y + Math.sign(dy));
-                    while (rayPosition.x != to.x) {
-                        if (this.hasPiece(rayPosition))
-                            return false;
-                        rayPosition.x += Math.sign(dx);
-                        rayPosition.y += Math.sign(dy);
-                    }
-                    return true;
+                    return this.lineMoveNotObstructed(from, to);
                 case 'rook':
                     if (adx > 0 && ady > 0) return false;
-                    var rayPosition = new Position(from.x + Math.sign(dx), from.y + Math.sign(dy));
-                    while (rayPosition.x != to.x || rayPosition.y != to.y) {
-                        if (this.hasPiece(rayPosition))
-                            return false;
-                        rayPosition.x += Math.sign(dx);
-                        rayPosition.y += Math.sign(dy);
-                    }
-                    return true;
+                    return this.lineMoveNotObstructed(from, to);
                 case 'king':
                     if (adx <= 1 && ady <= 1) return true;
-                    if (this.getCurrentPlayer().getKingMoved() || ady != 0 || adx != 2 ||
-                        this.getPiece(new Position(dx > 0 ? 1 : 8, from.y)).getType() != 'rook') 
+
+                    // Check if castle conditions are met
+                    var rookPosition = new Position(dx < 0 ? 1 : 8, from.y);
+                    if (this.getCurrentPlayer().getKingMoved() || ady != 0 || adx != 2 || !this.hasPiece(rookPosition, 'rook'))
                         return false;
-                    var rayPosition = new Position(from.x + Math.sign(dx), from.y);
-                    while (rayPosition.x != to.x) {
-                        if (this.hasPiece(rayPosition))
-                            return false;
-                        rayPosition.x += Math.sign(dx);
-                    }
-                    return true;
+                    return this.lineMoveNotObstructed(rookPosition, from);
                 case 'queen':
                     if (adx != ady && adx != 0 && ady != 0) return false;
-                    var rayPosition = new Position(from.x + Math.sign(dx), from.y + Math.sign(dy));
-                    if (adx == ady) {
-                        while (rayPosition.x != to.x) {
-                            if (this.hasPiece(rayPosition))
-                                return false;
-                            rayPosition.x += Math.sign(dx);
-                            rayPosition.y += Math.sign(dy);
-                        }
-                    } else {
-                        while (rayPosition.x != to.x || rayPosition.y != to.y) {
-                            if (this.hasPiece(rayPosition))
-                                return false;
-                            rayPosition.x += Math.sign(dx);
-                            rayPosition.y += Math.sign(dy);
-                        }
-                        return true;
-                    }
+                    return this.lineMoveNotObstructed(from, to);
                 default:
-                    return true;
+                    console.error("validateMove: default case");
+                    return false;
             }
         }
 
