@@ -36,6 +36,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    class ConditionedPosition {
+        constructor(x, y, condition) {
+            this.pos = new Position(x, y);
+            this.condition = condition;
+        }
+
+        fulfilled(pos) {
+            return this.condition(pos);
+        }
+    }
+
     // A class representing a chess piece
     class Piece {
         constructor(color, type) {
@@ -49,6 +60,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         getType() {
             return this.type;
+        }
+
+        // Same as getType, but if it's a pawn, then prepends piece's color
+        getFullType() {
+            if (this.type == 'pawn') return this.color + this.type;
+            return this.type;
+        }
+
+        // Checks whether this piece is a line piece, i.e. can attack in a line
+        isLine() {
+            return ['rook', 'bishop', 'queen'].includes(this.type);
         }
 
         // Returns the piece default to a given position 
@@ -70,10 +92,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Generates HTML elements of the piece
         generateView(tile) {
-            let piece = document.createElement('div');
+            var piece = document.createElement('div');
             piece.style.backgroundImage = 'url(\'img/pieces/' + this.color + '/' + this.type + '.svg\')';
             piece.setAttribute('class', 'piece');
             tile.appendChild(piece);
+        }
+    }
+
+    class Array2D {
+        constructor(rows, cols) {
+            this.fields = [];
+            for (var row = 0; row < rows; row++) {
+                this.fields.push([]);
+                for (var col = 0; col < cols; col++)
+                    this.fields[this.fields.length - 1].push([]);
+            }
+        }
+
+        get(pos) {
+            return this.fields[pos.y - 1][pos.x - 1];
+        }
+
+        add(pos, value) {
+            if (this.fields[pos.y - 1][pos.x - 1].filter(pos => pos.equals(value)) == 0) // temporary, use set instead
+                this.fields[pos.y - 1][pos.x - 1].push(value);
+        }
+
+        remove(pos, value) {
+            console.log('remove ', value, ' from ', pos, ', lookup: ', this.fields[pos.y - 1][pos.x - 1]);
+            this.fields[pos.y - 1][pos.x - 1] = this.get(pos).filter(item => !item.equals(value));
+            console.log('after: ', typeof this.fields[pos.y - 1][pos.x - 1]);
+        }
+
+        clear(pos) {
+            this.fields[pos.y - 1][pos.x - 1] = [];
         }
     }
 
@@ -125,6 +177,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        clearPieceView() {
+            
+        }
+
         movePiece(other) {
             var pieceElement = document.getElementById('tile' + this.row + this.col).firstChild;
             other.acceptPiece(pieceElement, this.piece);
@@ -132,8 +188,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         acceptPiece(pieceElement, piece) {
-            this.piece = piece;
             let tile = document.getElementById('tile' + this.row + this.col);
+            if (this.piece != null)
+                tile.removeChild(tile.firstChild);
+            this.piece = piece;
             tile.prepend(pieceElement); 
         }
 
@@ -143,7 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         static valid(pos) {
-            return pos.x > 0 && pos.y > 0 && pos.x <= boardCols && pos.y <= boardRows;
+            return pos.x > 0 && pos.y > 0 && pos.x <= 8 && pos.y <= 8;
         }
     }
 
@@ -154,6 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.hasCastled = false;
             this.lostPieces = [];
             this.moves = [];
+            this.doublePawn = null;
         }
     
         getKingMoved() {
@@ -173,21 +232,14 @@ document.addEventListener('DOMContentLoaded', () => {
     class Board {
         constructor() {
             this.tiles = [];
+            this.attacks = new Array2D(8, 8);
+            this.blocks = new Array2D(8, 8);
             this.currentPosition = null;
             this.currentPlayerColor = 'white';
             this.players = {
                 'white': new Player('white'),
                 'black': new Player('black')
             };
-        }
-
-        getRows() {
-            return this.tiles.length;
-        }
-
-        getCols() {
-            if (this.getRows() == 0) return 0;
-            return this.tiles[0].length;
         }
 
         getCurrentPosition() {
@@ -226,17 +278,25 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // todo: oposite color
-        hasFriendlyPiece(pos, type) {
+        hasFriendlyPiece(pos) {
             var piece = this.getPiece(pos);
-            return piece != null && piece.getColor() == this.currentPlayerColor && (typeof type === "undefined" ? true : piece.getType() == type);
+            return piece != null && piece.getColor() == this.currentPlayerColor;
         }
 
         getCurrentPlayerColor() {
             return this.currentPlayerColor;
         }
 
+        getOppositePlayerColor() {
+            return this.currentPlayerColor == 'white' ? 'black' : 'white';
+        }
+
         getCurrentPlayer() {
             return this.players[this.currentPlayerColor];
+        }
+
+        getOppositePlayer() {
+            return this.players[this.getOppositePlayerColor()];
         }
 
         // Returns the position of the king of a specified color
@@ -250,6 +310,180 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
             throw 'There isn\'t a king on the board!';
+        }
+
+        // Checks whether piece at the attacker's position is in a line with another position, i.e. it could
+        // attack it in line (either diagonally or parallel to the board's sides)
+        isInLineWith(attackerPos, anotherPos) {
+            var attacker = this.getPiece(attackerPos);
+            if (!attacker.isLine()) return false;
+
+            var adx = Math.abs(attackerPos.x - anotherPos.x), ady = Math.abs(attackerPos.y - anotherPos.y);
+            switch (attacker.getType()) {
+                case 'rook': 
+                    return adx == 0 || ady == 0;
+                case 'bishop':
+                    return adx == ady;
+                case 'queen':
+                    return adx == 0 || ady == 0 || adx == ady;
+                default:
+                    throw 'inLineWith default case';
+            }
+        }
+
+        // Checks whether the enemy piece at the specified position has just double moved
+        enemyDoubleMove(pos) {
+            var doublePawn = this.getOppositePlayer().doublePawn;
+            return doublePawn != null && doublePawn.equals(pos);
+        }
+
+        pieceDirs = {
+            'king': [],
+            'knight': [],
+            'pawn': [],
+            'bishop': [new Position(-1, 1), new Position(-1, -1), new Position(1, 1), new Position(1, -1)],
+            'rook': [new Position(-1, 0), new Position(1, 0), new Position(0, -1), new Position(0, 1)],
+            'queen': [new Position(-1, 0), new Position(1, 0), new Position(0, -1), new Position(0, 1), new Position(-1, 1), new Position(-1, -1), new Position(1, 1), new Position(1, -1)]
+        };
+    
+        pieceMoves = {
+            'king': [new ConditionedPosition(-1, 0, Tile.valid), new ConditionedPosition(1, 0, Tile.valid), new ConditionedPosition(0, -1, Tile.valid), new ConditionedPosition(0, 1, Tile.valid), 
+                     new ConditionedPosition(-1, 1, Tile.valid), new ConditionedPosition(-1, -1, Tile.valid), new ConditionedPosition(1, 1, Tile.valid), new ConditionedPosition(1, -1, Tile.valid)],
+            'knight': [new ConditionedPosition(1, 2, Tile.valid), new ConditionedPosition(1, -2, Tile.valid), new ConditionedPosition(-1, 2, Tile.valid), new ConditionedPosition(-1, -2, Tile.valid), 
+                     new ConditionedPosition(2, 1, Tile.valid), new ConditionedPosition(2, -1, Tile.valid), new ConditionedPosition(-2, 1, Tile.valid), new ConditionedPosition(-2, -1, Tile.valid)],
+            'whitepawn': [new ConditionedPosition(0, 1, (pos) => {return !this.hasFriendlyPiece(pos)}), new ConditionedPosition(0, 2, (pos) => {return !this.hasFriendlyPiece(pos) && !this.hasFriendlyPiece(new Position(pos.x, pos.y - 1)) && pos.y == 4}),
+                        new ConditionedPosition(1, 1, (pos) => {return this.hasEnemyPiece(pos) || (this.enemyDoubleMove(new Position(pos.x, pos.y - 1)) && pos.y == 5)}), 
+                        new ConditionedPosition(-1, 1, (pos) => {return this.hasEnemyPiece(pos) || (this.enemyDoubleMove(new Position(pos.x, pos.y - 1)) && pos.y == 5)})],
+            'blackpawn': [new ConditionedPosition(0, -1, (pos) => {return !this.hasFriendlyPiece(pos)}), new ConditionedPosition(0, -2, (pos) => {return !this.hasFriendlyPiece(pos) && !this.hasFriendlyPiece(new Position(pos.x, pos.y + 1)) && pos.y == 5}),
+                        new ConditionedPosition(1, -1, (pos) => {return this.hasEnemyPiece(pos) || (this.enemyDoubleMove(new Position(pos.x, pos.y + 1)) && pos.y == 4)}), 
+                        new ConditionedPosition(-1, -1, (pos) => {return this.hasEnemyPiece(pos) || (this.enemyDoubleMove(new Position(pos.x, pos.y + 1)) && pos.y == 4)})],
+            'bishop': [],
+            'rook': [],
+            'queen': []
+        }
+
+        // Returns all positions of unfriendly pieces attacking at a given position
+        getUnfriendlyAttacks(pos, color) {
+            return this.attacks.get(pos).filter(pos => this.hasPiece(pos) && this.getPiece(pos).getColor() != color);
+        }
+
+        // Retrieves all legal moves (destinations) of the piece at specified position
+        getLegalMoves(pos) {
+            var moves = [];
+            // Account for directions
+            console.log('getLegalMoves ', pos);
+            for (var dir of this.pieceDirs[this.getPiece(pos).getType()]) {
+                var to = pos.addDeep(dir);
+                while (Tile.valid(to)) {
+                    moves.push(to);
+                    if (this.hasPiece(to))
+                        break;
+                    to = to.addDeep(dir);
+                }
+            }
+
+            // Account for moves
+            let offsets = this.pieceMoves[this.getPiece(pos).getFullType()];
+            for (var offset of offsets)
+            {
+                var to = pos.addDeep(offset.pos);
+                var c = offset.condition;
+                if (Tile.valid(to) && c(to))
+                    moves.push(to);
+            }
+            return moves;
+        }
+
+        // Initiates the piece's attacks' table
+        initPieceAttacks(attackerPos) {
+            var legalMoves = this.getLegalMoves(attackerPos);
+            var attackerIsLine = this.getPiece(attackerPos).isLine();
+            for (var defenderPos of legalMoves) {
+                this.attacks.add(defenderPos, attackerPos);
+                if (this.hasPiece(defenderPos) && attackerIsLine)
+                    this.blocks.add(defenderPos, attackerPos);
+            }
+        }
+
+        // Initializes all attacks on board
+        initAttacks() {
+            var piecePositions = this.getAllPiecePositions();
+            for (var pos of piecePositions)
+                this.initPieceAttacks(pos);
+        }
+
+        executeMove(from, to) {
+            // If a piece is taken, push it to the lost pieces list
+            if (this.hasPiece(to)) {
+                this.getOppositePlayer().lostPieces.push(this.getPiece(to));
+            }
+            
+            // Clear the previous double pawn move, and if this is one, save it
+            this.getCurrentPlayer().doublePawn = null;
+            if (Math.abs(from.y - to.y) == 2 && this.getPiece(from) == 'pawn')
+                this.getCurrentPlayer().doublePawn = to;
+            
+            // Move the piece 'physically' and turn variables
+            this.getTile(from).movePiece(this.getTile(to));
+            this.currentPlayerColor = this.getOppositePlayerColor();
+            this.setCurrentPosition(null);
+        }
+
+        // Recalculates the attacks and blocks and executed the move
+        recalculateAttacks(attackerOldPos, attackerNewPos) {
+            // Remove current attacks
+            console.log('recalculateAttacks ', attackerOldPos, attackerNewPos);
+            var oldLegalMoves = this.getLegalMoves(attackerOldPos), attackerIsLine = this.getPiece(attackerOldPos).isLine();
+            for (var defenderPos of oldLegalMoves) {
+                this.attacks.remove(defenderPos, attackerOldPos);
+                if (this.hasPiece(defenderPos) && attackerIsLine)
+                    this.blocks.remove(defenderPos, attackerOldPos)
+            }
+            
+            // Position of the attacker changes, some pieces' attacks might get unblocked
+            var unblockedAttackers = [];
+            if (!attackerOldPos.equals(attackerNewPos)) {
+                // Recalculate attacks of all positions blocked by the attacker's position
+                // and remove all blockers (as there isn't a piece blocking anything anymore)
+                unblockedAttackers = this.blocks.get(attackerOldPos);
+                this.blocks.clear(attackerOldPos);
+
+                // If the new position is occupied, the occupying piece is taken, hence
+                // its attacks have to be removed. Since the attacker takes the occupied
+                // position, blocks don't change
+                if (this.hasPiece(attackerNewPos)) {
+                    var oldAttackerLegalMoves = this.getLegalMoves(attackerNewPos);
+                    for (var defenderPos of oldAttackerLegalMoves)
+                        this.attacks.remove(defenderPos, attackerNewPos);
+                }
+
+                // Execute the move
+                this.executeMove(attackerOldPos, attackerNewPos);
+            }
+
+            // Initialize attackers' attacks on its new position
+            this.initPieceAttacks(attackerNewPos);
+            console.log('recalculateAttacks initiated piece attacks');
+
+            // Now that the piece is moved, the unblocked positions can recalculate their attacks
+            console.log('recalculateAttacks recurse');
+            for (var unblockedAttacker of unblockedAttackers)
+                this.recalculateAttacks(unblockedAttacker, unblockedAttacker);
+            console.log('recalculateAttacks exit');
+        }
+
+        // Retrieves positions of all pieces of the specified color
+        // If the color is null, retrieves positions of all colors
+        getAllPiecePositions(color = null) {
+            var piecePositions = [];
+            for (var row = 1; row <= 8; row++)
+                for (var col = 1; col <= 8; col++) {
+                    var pos = new Position(col, row);
+                    if (this.hasPiece(pos) && (color == null || this.getPiece(pos).getColor() == color))
+                        piecePositions.push(pos);
+                }
+            
+            return piecePositions;
         }
 
         // Returns the manhattan distance to the first element met by iteratively
@@ -267,332 +501,125 @@ document.addEventListener('DOMContentLoaded', () => {
             };
         }
 
-        // Checks whether there is not a piece between from and to on a straight line
-        // The line between from and to must be either parallel or diagonal to the board
-        lineMoveNotObstructed(from, to) {
-            var scanResult = this.lineScan(from, from.getDirection(to));
-            return scanResult.piece == null || scanResult.distance >= from.manhattanDistance(to);
+        // Retrieves the position of all of the attackers of the specified color's king
+        getKingAttackers(color) {
+            return this.getUnfriendlyAttacks(this.getKingPosition(color), color);
         }
 
-        getAllPiecePositions(color = null) {
-            var piecePositions = [];
-            for (var row = 1; row <= 8; row++)
-                for (var col = 1; col <= 8; col++) {
-                    var pos = new Position(col, row);
-                    if (this.hasPiece(pos) && (color == null || this.getPiece(pos).getColor() == color))
-                        piecePositions.push(pos);
-                }
-            
-            return piecePositions;
-        }
-
-        isAtttackedBy(attackerPosition, defenderPositon) {
-            var attackerPiece = this.getPiece(attackerPosition);
-            var dx = defenderPositon.x - attackerPosition.x, dy = defenderPositon.y - attackerPosition.y;
-            var adx = Math.abs(dx), ady = Math.abs(dy);
-
-            switch (attackerPiece.getType()) {
-                case 'pawn':
-                    return adx == 1 && dy == (attackerPiece.getColor() == 'whtie' ? 1 : -1);
-                case 'knight':
-                    return adx + ady == 3 && (adx == 1 || adx == 2);
-                case 'bishop':
-                    if (adx != ady) return false;
-                    return this.lineMoveNotObstructed(attackerPosition, defenderPositon);
-                case 'rook':
-                    if (adx > 0 && ady > 0) return false;
-                    return this.lineMoveNotObstructed(attackerPosition, defenderPositon);
-                case 'queen':
-                    if (adx != ady && adx != 0 && ady != 0) return false;
-                    return this.lineMoveNotObstructed(attackerPosition, defenderPositon);
-                case 'king':
-                    return adx <= 1 && ady <= 1;
-                default:
-                    throw 'isAttackedBy default case';
-            }
-        }
-
-        // Checks whether a given position is attcked by the enemy
-        isAttacked(defenderPosition, defenderColor) {
-            var attackerPositions = this.getAllPiecePositions(defenderColor == 'white' ? 'black' : 'white');
-            for (var attackerPosition of attackerPositions) {
-                if (this.isAtttackedBy(attackerPosition, defenderPosition))
-                    return true;
-            }
-            return false;
-        }
-
-        getAttackers(defenderPosition) {
-            var piece = this.getPiece(defenderPosition);
-            var attackerPositions = this.getAllPiecePositions(piece.getColor() == 'white' ? 'black' : 'white');
-            var attackers = [];
-            for (var attackerPosition of attackerPositions) {
-                if (this.isAtttackedBy(attackerPosition, defenderPosition))
-                    attackers.push(attackerPosition);
-            }
-            return attackers;
-        }
-
-        // Checks whether the specified color's king is under attack, i.e. checked
+        // Checks whether the king of the specified color is in check or not
         isChecked(color) {
-            return this.isAttacked(this.getKingPosition(color), color);
+            return this.getKingAttackers(color).length != 0;
         }
 
-        // Checks whether the move is trivially valid, that is if a given piece can move
-        // to the specified tile in the fashion specified by its type and whether it's
-        // blocked by any pieces
-        // TODO: en passant
-        trivialValidateMove(from, to) {
-            if (from.x == to.x && from.y == to.y || !Tile.valid(to))
+        // Accepts the specified move if it wouldn't end the turn checking the player itself
+        // This function doesn't check whether the move is valid or even whether the piece exists
+        pieceCanMove(from, to) {
+            // Check if moving the piece is pinned
+            if (this.hasPiece(to) && this.getPiece(to).getColor() == this.currentPlayerColor)
                 return false;
             
-            let dx = to.x - from.x, dy = to.y - from.y;
-            let adx = Math.abs(dx), ady = Math.abs(dy);
-
-            switch (this.getPiece(from).getType()) {
-                case 'pawn':
-                    if (this.getPiece(from).getColor() == 'white') 
-                    {
-                        if (this.hasPiece(to))
-                            return Math.abs(to.x - from.x) <= 1 && to.y == from.y + 1;
-                        return to.x == from.x && to.y > from.y && to.y <= from.y + 1 + (from.y == 2 ? 1 : 0);
-                    } else {
-                        if (this.hasPiece(to))
-                            return Math.abs(to.x - from.x) <= 1 && to.y == from.y - 1;
-                        return to.x == from.x && to.y < from.y && to.y >= from.y - 1 - (from.y == 7 ? 1 : 0);
-                    }
-                case 'knight':
-                    return adx + ady == 3 && (adx == 1 || adx == 2);
-                case 'bishop':
-                    if (adx != ady) return false;
-                    return this.lineMoveNotObstructed(from, to);
-                case 'rook':
-                    if (adx > 0 && ady > 0) return false;
-                    return this.lineMoveNotObstructed(from, to);
-                case 'queen':
-                    if (adx != ady && adx != 0 && ady != 0) return false;
-                    return this.lineMoveNotObstructed(from, to);
-                case 'king':
-                    if (adx <= 1 && ady <= 1) return true;
-
-                    // Check if castle conditions are met
-                    var rookPosition = new Position(dx < 0 ? 1 : 8, from.y);
-                    if (this.getCurrentPlayer().getKingMoved() || ady != 0 || adx != 2 || !this.hasFriendlyPiece(rookPosition, 'rook'))
+            var blockedPieces = this.blocks.get(from);
+            console.log('pieceCanMove (', from , ', ', to, ') - start');
+            console.log('blocked: ', blockedPieces);
+            for (var attackerPos of blockedPieces) {
+                // If the attacker is in line with the blocking piece, and the scan from the attacker
+                // to the blocking piece (skipping the blocking piece) hits the king, the piece is pinned
+                if (this.getPiece(attackerPos).getColor() != this.currentPlayerColor && this.isInLineWith(attackerPos, from)) {
+                    var scanResult = this.lineScan(attackerPos, attackerPos.getDirection(from), from);
+                    if (scanResult.piece != null && scanResult.piece.getType() == 'king' && scanResult.piece.getColor() == this.currentPlayerColor)
                         return false;
-                    return this.lineMoveNotObstructed(rookPosition, from);
-                default:
-                    console.error("validateMove default case");
-                    return false;
-            }    
-        }
- 
-        // Checks whether a particular move exposes player's king to an attack, i.e. checks
-        // Assumes the king isn't already checked
-        moveExposesKing(from, to) {
-            var piece = this.getPiece(from);
-            if (piece.getType() == 'king')
-                return this.isAttacked(to, piece.getColor());
-
-            var kingPosition = this.getKingPosition(this.currentPlayerColor);
-            var dx = kingPosition.x - from.x, dy = kingPosition.y - from.y;
-            var adx = Math.abs(dx), ady = Math.abs(dy);
-
-            if (adx != 0 && ady != 0 && adx != ady)
-                return false;
-            var attacker = this.lineScan(kingPosition, kingPosition.getDirection(from), from);
-            if (attacker.piece == null || attacker.piece.getColor() == this.currentPlayerColor)
-                return false;
-            switch (attacker.piece.getType()) {
-                case 'pawn':
-                case 'knight':
-                    return false;
-                case 'rook':
-                    return adx == 0 || ady == 0;
-                case 'bishop':
-                    return adx == ady;
-                case 'queen':
-                    return true;
-                default:
-                    throw 'moveExposesKing default case';
-            }
-        }
-
-        listAllPieceMoves(pos) {
-            var piece = this.getPiece(pos), moves = [];
-            switch (piece.getType()) {
-                case 'pawn':
-                    var sign = piece.getColor() == 'white' ? 1 : -1;
-                    if (!this.hasPiece(new Position(pos.x, pos.y + sign * 1))) {
-                        moves.push(new Position(pos.x, pos.y + sign * 1));
-                        if (!this.hasPiece(new Position(pos.x, pos.y + sign * 2)) && pos.y == (piece.getColor() == 'white' ? 2 : 7))
-                            moves.push(new Position(pos.x, pos.y + sign * 2));
-                    }
-
-                    if (this.hasEnemyPiece(new Position(pos.x - 1, pos.y + sign * 1)))
-                        moves.push(new Position(pos.x - 1, pos.y + sign * 1));
-                    if (this.hasEnemyPiece(new Position(pos.x + 1, pos.y + sign * 1)))
-                        moves.push(new Position(pos.x + 1, pos.y + sign * 1));
-                    break;
-                case 'knight':
-                    const knightOffsets = [new Position(1, 2), new Position(1, -2), new Position(-1, 2), new Position(-1, -2), new Position(2, 1), new Position(2, -1), new Position(-2, 1), new Position(-2, -1)];
-                    for (var offset of knightOffsets) {
-                        var newPos = pos.addDeep(offset);
-                        if (Tile.valid(newPos) && !this.hasFriendlyPiece(newPos))
-                            moves.push(newPos);
-                    }
-                    break;
-                case 'bishop':
-                    const bishopDirections = [new Position(-1, 1), new Position(-1, -1), new Position(1, 1), new Position(1, -1)];
-                    for (var dir of bishopDirections) {
-                        var scanResult = this.lineScan(pos, dir);
-                        var plus = scanResult.piece != null && scanResult.piece.getColor() != piece.getColor() ? 1 : 0;
-                        for (var i = 1; i < scanResult.distance / 2 + plus; i++)
-                            moves.push(new Position(pos.x + dir.x * i, pos.y + dir.y * i));
-                    }
-                    break;
-                case 'rook':                     
-                    const rookDirections = [new Position(-1, 0), new Position(1, 0), new Position(0, -1), new Position(0, 1)];
-                    for (var dir of rookDirections) {
-                        var scanResult = this.lineScan(pos, dir);
-                        var plus = scanResult.piece != null && scanResult.piece.getColor() != piece.getColor() ? 1 : 0;
-                        for (var i = 1; i < scanResult.distance / 2 + plus; i++)
-                            moves.push(new Position(pos.x + dir.x * i, pos.y + dir.y * i));
-                    }
-                    break;
-                case 'queen':
-                    const queenDirections = [new Position(-1, 0), new Position(1, 0), new Position(0, -1), new Position(0, 1),new Position(-1, 1), new Position(-1, -1), new Position(1, 1), new Position(1, -1)];
-                    for (var dir of queenDirections) {
-                        var scanResult = this.lineScan(pos, dir);
-                        var plus = scanResult.piece != null && scanResult.piece.getColor() != piece.getColor() ? 1 : 0;
-                        var div = Math.abs(dir.x) + Math.abs(dir.y);
-                        for (var i = 1; i < scanResult.distance / div + plus; i++)
-                            moves.push(new Position(pos.x + dir.x * i, pos.y + dir.y * i));
-                    }
-                    break;
-                case 'king':
-                    for (var dy = -1; dy <= 1; dy++)
-                        for (var dx = -1; dx <= 1; dx++) {
-                            if (Tile.valid(new Position(pos.x + dx, pos.y + dy)) && !this.hasFriendlyPiece(new Position(pos.x + dx, pos.y + dy)))
-                                moves.push(new Position(pos.x + dx, pos.y + dy));
-                        }
-                    
-                    if (!this.getCurrentPlayer().getKingMoved()) {
-                        for (var rookX of [1, 8]) {
-                            var rookPosition = new Position(rookX, pos.y);
-                            if (!this.getCurrentPlayer().getKingMoved() && this.hasFriendlyPiece(rookPosition, 'rook') && this.lineMoveNotObstructed(rookPosition, pos))
-                                moves.push(new Position(Math.sign(pos.x - rookX) * 2 + pos.x, pos.y));
-                        }
-                    }
-                    break;
-                default:
-                    throw 'listAllPieceMoves default case';
-            }
-
-            var validatedMoves = [];
-            console.log(pos, '\'s moves: ', moves);
-            for (var to of moves) {
-                if (this.trivialValidateMove(pos, to)) {
-                    if (piece.getType() == 'king')
-                    {
-                        if (!this.moveExposesKing(pos, to))
-                            validatedMoves.push(to);
-                    }
-                    else if (this.isChecked(this.currentPlayerColor)) {
-                        var attackers = this.getAttackers(this.getKingPosition(this.currentPlayerColor));
-                        console.log(piece, pos, to, ' to defeat ', attackers[0]);
-                        if (attackers.length == 1 && to.equals(attackers[0])) // OR CAN BLOCK LOS
-                            validatedMoves.push(to);
-                    } else {
-                        validatedMoves.push(to);
-                    }
-                } 
-            }
-            return validatedMoves;
-        }
-
-        listAllMoves(color) {
-            var positions = this.getAllPiecePositions(color), moves = [];
-            for (var pos of positions) {
-                var newMoves = this.listAllPieceMoves(pos);
-                if (newMoves.length != 0) {
-                    moves.push({
-                        'pos': pos,
-                        'moves': newMoves
-                    });
                 }
             }
 
+            // If there isn't a check, the piece can move
+            if (!this.isChecked(this.currentPlayerColor))
+            {
+                // If the piece is a king, it can't get into a checked position
+                if (this.getPiece(from).getType() != 'king') return true;
+                return this.getUnfriendlyAttacks(to, this.currentPlayerColor).length == 0;
+            }
+            
+            // Otherwise, the check must be remedied
+            var attackers = this.getKingAttackers(this.currentPlayerColor);
+            // If there is more than one attacker, the king must run to an unchecked position
+            if (attackers.length > 1)
+                return this.getPiece(from).getType() == 'king' && this.getUnfriendlyAttacks(to, this.currentPlayerColor).length == 0;
+            // Otherwise, the king can either run...
+            if (this.getPiece(from).getType() == 'king') return this.getUnfriendlyAttacks(to, this.currentPlayerColor).length == 0; 
+            // ... the attacking piece can be taken...
+            if (attackers[0].equals(to)) return true;
+            // ... or the piece can block the incoming attack. This will happen if the attacker is a line piece,
+            // the and the move will put the piece inbetween the king and the attacker
+            var kingPosition = this.getKingPosition(this.currentPlayerColor);
+            return this.getPiece(attackers[0]).isLine() && this.isInLineWith(attackers[0], to) && 
+                Math.sign(attackers[0].x - kingPosition.x) == Math.sign(to.x - kingPosition.x) &&
+                Math.sign(attackers[0].y - kingPosition.y) == Math.sign(to.y - kingPosition.y) &&
+                kingPosition.manhattanDistance(to) < kingPosition.manhattanDistance(attackers[0]);
+        }
+
+        // Retrieve the moves of all pieces
+        getPieceMoves(pos) {
+            var moves = [];
+            if (this.hasPiece(pos)) {
+                var legalMoves = this.getLegalMoves(pos);
+                for (var to of legalMoves) {
+                    if (this.pieceCanMove(pos, to))
+                        moves.push(to);
+                }
+            }
             return moves;
         }
 
-        validateMove(from, to) {
-            return this.trivialValidateMove(from, to) && !this.moveExposesKing(from, to);
+        // Returns moves of all pieces of the specified color
+        getAllPieceMoves(color) {
+            var moves = [], piecePositions = this.getAllPiecePositions(color);
+            for (var pos of piecePositions) {
+                var pieceMoves = this.getPieceMoves(pos);
+                if (pieceMoves.length > 0) {
+                    moves.push({
+                        'pos': pos, 
+                        'moves': pieceMoves
+                    });
+                }
+            }
+            return moves;
+        }
+
+        // Returns the game state: unresolved, stalemate, or the winner
+        calculateGameState() {
+            if (this.getAllPieceMoves(this.currentPlayerColor).length == 0) {
+                if (this.isChecked(this.currentPlayerColor)) return this.getOppositePlayerColor();
+                return 'stalemate';
+            }
+            return 'unresolved';
         }
 
         // Moves a piece from one tile to another
         // This function doesn't check whether the move is valid
         movePiece(from, to) {
-            var moves = this.listAllMoves(this.currentPlayerColor);
-            console.log(from, to);
-            for (var pieceMoves of moves) {
-                if (pieceMoves.pos.equals(from))
-                {
-                    for (var move of pieceMoves.moves)
-                    {
-                        if (move.equals(to))
-                        {
-                            this.getTile(from).movePiece(this.getTile(to));
-    
-                            // Set move variables
-                            this.currentPlayerColor = (this.currentPlayerColor == 'white' ? 'black' : 'white');
-                            this.setCurrentPosition(null);
-                            break;
-                        }
-                    }
-                    break;
-                }
-            }
-
-            /*
-            if (this.hasPiece(from) && this.validateMove(from, to)) {
-                // Move the piece
-                var piece = this.getPiece(from);
-                this.getTile(to).setPiece(piece);
-                this.getTile(from).deletePiece();
-                
-                // Check for castle
-                if (piece.getType() == 'king')
-                {
-                    this.getCurrentPlayer().setKingMoved();
-                    if (Math.abs(from.x - to.x) == 2) {
-                        var rookFrom = new Position(to.x - from.x > 0 ? 8 : 1, from.y);
-                        var rookTo = new Position(to.x - from.x > 0 ? 6 : 4, from.y);
-                        this.getTile(rookTo).setPiece(this.getPiece(rookFrom));
-                        this.getTile(rookFrom).deletePiece();
-                        this.getCurrentPlayer().setHasCastled();
-                    }
-                }*/
+            var legalMoves = this.getLegalMoves(from);
+            console.log('movePiece ', from, to, legalMoves.filter(move => move.equals(to)).length != 0, this.pieceCanMove(from, to));
+            if (legalMoves.filter(move => move.equals(to)).length != 0 && this.pieceCanMove(from, to))
+                this.recalculateAttacks(from, to);
         }
 
         // Initializes the board with tiles and default pieces
         initializeDefault() {
-            this.tiles = [];
-            for (var row = 1; row <= boardRows; row++)
-            {
-                let tileRow = [];
-                for (var col = 1; col <= boardCols; col++) {
-                    tileRow.push(new Tile(row, col));
-                    tileRow[tileRow.length - 1].initializeDefault();
+            this.tiles = Array.from(Array(8), () => new Array(8));
+            for (var row = 8; row > 0; row--)
+                for (var col = 1; col <= 8; col++) {
+                    this.tiles[row - 1][col - 1] = new Tile(row, col);
+                    this.tiles[row - 1][col - 1].initializeDefault();
                 }
-                this.tiles.push(tileRow);
-            }
+
+            this.initAttacks();
         }
 
         // Generates HTML elements of the board by appending
         // structures to the specified parent
         generateView(parent) {
-            for (var row = this.getRows(); row > 0; row--)
-                for (var col = 1; col <= this.getCols(); col++) {
+            for (var row = 8; row > 0; row--)
+                for (var col = 1; col <= 8; col++) {
                     this.tiles[row - 1][col - 1].generateView(parent);
                 }
         }
@@ -602,6 +629,9 @@ document.addEventListener('DOMContentLoaded', () => {
     var board = new Board();
     board.initializeDefault();
     board.generateView(tiles);
+    console.log(board);
+    console.log('attacks: ', board.attacks);
+    console.log('blocks: ', board.blocks);
 
     // Add the onclick function that allows players to move pieces
     function onClick(event) {
@@ -611,21 +641,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (currentPosition != null && (!board.hasPiece(newPosition) || board.getPiece(newPosition).getColor() != board.getCurrentPlayerColor()))
         {
+            console.log('MOVING PIECE');
             board.movePiece(currentPosition, newPosition);
-
-            var moves = board.listAllMoves(board.currentPlayerColor);
-            console.log(board.currentPlayerColor, '\'s moves', moves);
-            console.log('is ', board.currentPlayerColor, ' checked?: ', board.isChecked(board.currentPlayerColor));
-            if (board.isChecked(board.currentPlayerColor) && moves.length == 0) {
-                window.alert('checkmate');
-            }
-            else if (!board.isChecked(board.currentPlayerColor) && moves.length == 0) {
-                window.alert('stalemate');
-            }
+            /*var gameState = board.calculateGameState();
+            if (gameState != 'unresolved')
+                window.alert(gameState);*/
+            console.log('attacks: ', board.attacks);
+            console.log('blocks: ', board.blocks);
         }
             
         else if (board.hasPiece(newPosition) && board.getPiece(newPosition).getColor() == board.getCurrentPlayerColor())
+        {
             board.setCurrentPosition(newPosition);
+            console.log('START');
+            console.log('END:', board.getPieceMoves(newPosition));
+        }
     }
     boardDiv.addEventListener("click", onClick);
 });
