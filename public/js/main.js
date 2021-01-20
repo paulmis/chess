@@ -90,15 +90,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return this.piece;
         }
 
-        setPiece(piece) {
-            this.deletePiece();
-
-            // Copy and draw the new piece
-            let tile = document.getElementById('tile' + this.row + this.col);
-            this.piece = piece;
-            this.piece.generateView(tile);
-        }
-
         // Initializes the tile with a default piece
         initializeDefault() {
             this.piece = Piece.getInitialPiece(this.row, this.col);
@@ -106,21 +97,44 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Generates HTML elements of the tile
         generateView(parent) {
-            let tile = document.createElement('div');
+            var tile = document.createElement('div');
             tile.setAttribute('class', 'tile ' + ((this.row * 9 + this.col) & 1 ? 'tile-white' : 'tile-black'));
             tile.setAttribute('id', 'tile' + this.row + this.col);
             parent.appendChild(tile);
 
             if (this.piece != null)
                 this.piece.generateView(tile);
+
+            // Generate file and rank tags
+            if (this.row == 1)
+            {
+                var file = document.createElement('div');
+                file.setAttribute('class', 'file');
+                file.setAttribute('id', 'file' + this.row);
+                file.textContent = String.fromCharCode(this.col + 96);
+                tile.appendChild(file);
+            }
+
+            if (this.col == 8)
+            {
+                var rank = document.createElement('div');
+                rank.setAttribute('class', 'rank');
+                rank.setAttribute('id', 'rank' + this.col);
+                rank.textContent = this.row;
+                tile.appendChild(rank);
+            }
         }
 
-        // Deletes the piece object and drawed elements
-        deletePiece() {
+        movePiece(other) {
+            var pieceElement = document.getElementById('tile' + this.row + this.col).firstChild;
+            other.acceptPiece(pieceElement, this.piece);
             this.piece = null;
+        }
+
+        acceptPiece(pieceElement, piece) {
+            this.piece = piece;
             let tile = document.getElementById('tile' + this.row + this.col);
-            while (tile.firstChild)
-                tile.removeChild(tile.lastChild);
+            tile.prepend(pieceElement); 
         }
 
         enableHighlight() {
@@ -451,7 +465,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         var scanResult = this.lineScan(pos, dir);
                         var plus = scanResult.piece != null && scanResult.piece.getColor() != piece.getColor() ? 1 : 0;
                         var div = Math.abs(dir.x) + Math.abs(dir.y);
-                        console.log("QUEEN ", dir, scanResult, plus, div);
                         for (var i = 1; i < scanResult.distance / div + plus; i++)
                             moves.push(new Position(pos.x + dir.x * i, pos.y + dir.y * i));
                     }
@@ -487,7 +500,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     else if (this.isChecked(this.currentPlayerColor)) {
                         var attackers = this.getAttackers(this.getKingPosition(this.currentPlayerColor));
                         console.log(piece, pos, to, ' to defeat ', attackers[0]);
-                        if (attackers.length == 1 && to.equals(attackers[0]))
+                        if (attackers.length == 1 && to.equals(attackers[0])) // OR CAN BLOCK LOS
                             validatedMoves.push(to);
                     } else {
                         validatedMoves.push(to);
@@ -528,9 +541,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     {
                         if (move.equals(to))
                         {
-                            var piece = this.getPiece(from);
-                            this.getTile(to).setPiece(piece);
-                            this.getTile(from).deletePiece();
+                            this.getTile(from).movePiece(this.getTile(to));
     
                             // Set move variables
                             this.currentPlayerColor = (this.currentPlayerColor == 'white' ? 'black' : 'white');

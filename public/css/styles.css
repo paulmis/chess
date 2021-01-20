@@ -72,14 +72,20 @@ h1 {
 .tile {
   height: 80px;
   width: 80px;
+  position: relative;
+  font-weight: bold;
+  font-family: 'Roboto', sans-serif;
+  font-size: 11px;
 }
 
 .tile-black {
   background-color: #AA7C56;
+  color: #f1dcbd;
 }
 
 .tile-white {
   background: #f1dcbd;
+  color: #AA7C56;
 }
 
 .piece {
@@ -88,6 +94,23 @@ h1 {
   width: 80px;
   background-size: 80px 80px;
   opacity: 0.90;
+  position: absolute;
+}
+
+/* the row tag */
+.rank {
+  z-index: 4;
+  position: absolute;
+  left: 72px;
+  top: 1px;
+}
+
+/* the column tag */
+.file {
+  z-index: 4;
+  position: absolute;
+  bottom: 0px;
+  left: 3px;
 }
 
 .tile-highlighted {
