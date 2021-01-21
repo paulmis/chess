@@ -17,9 +17,9 @@ function createF() {
     //create first slider element
     var sliderInput = document.createElement("input");
     sliderInput.setAttribute("type", "range");
-    sliderInput.setAttribute("min", "1");
-    sliderInput.setAttribute("max", "60");
-    sliderInput.setAttribute("value", "30");
+    sliderInput.setAttribute("min", "0");
+    sliderInput.setAttribute("max", "8");
+    sliderInput.setAttribute("value", "4");
     sliderInput.setAttribute("class", "slider");
     sliderInput.setAttribute("id", "time")
     firstSliderPar.appendChild(sliderInput);
@@ -35,6 +35,12 @@ function createF() {
     span.setAttribute("id", "valueOfSlider")
     firstSliderPar.appendChild(span);
 
+    var minutes = document.createElement("span");
+    minutes.setAttribute("id", "minutes");
+    var sth = document.createTextNode(" minutes");
+    firstSliderPar.appendChild(minutes);
+    minutes.appendChild(sth);
+
     //creates a paragraph for the second slider
     var secondSliderPar = document.createElement("p");
     secondSliderPar.setAttribute("class", "slider-par");
@@ -44,16 +50,16 @@ function createF() {
     //create second slider element
     var sliderInput2 = document.createElement("input");
     sliderInput2.setAttribute("type", "range");
-    sliderInput2.setAttribute("min", "1");
-    sliderInput2.setAttribute("max", "60");
-    sliderInput2.setAttribute("value", "30");
+    sliderInput2.setAttribute("min", "0");
+    sliderInput2.setAttribute("max", "8");
+    sliderInput2.setAttribute("value", "4");
     sliderInput2.setAttribute("class", "slider");
     sliderInput2.setAttribute("id", "afterMove")
     secondSliderPar.appendChild(sliderInput2);
 
     //create second value display
     var valString2 = document.createElement("span");
-    var spanVal2 = document.createTextNode("Value:");
+    var spanVal2 = document.createTextNode("Time bonus after each move: ");
     valString2.appendChild(spanVal2);
     secondSliderPar.appendChild(valString2);
 
@@ -62,28 +68,38 @@ function createF() {
     span2.setAttribute("id", "valueOfSlider2")
     secondSliderPar.appendChild(span2);
 
+    var seconds = document.createElement("span");
+    seconds.setAttribute("id", "seconds");
+    var sth2 = document.createTextNode(" seconds");
+    secondSliderPar.appendChild(seconds);
+    seconds.appendChild(sth2);
+
     //add the current elements to the body
     var body = document.querySelector(".main-content");
     body.appendChild(slidersDiv);
 
     //remove menu buttons
     var toBeRemoved = document.querySelector(".start-game");
+    var liveToBeRemoved = document.querySelector(".side-content")
+    liveToBeRemoved.remove();
     toBeRemoved.remove();
 
     //show actual value
+    var valuesOfSlider1 = [1, 3, 5, 10, 15, 20, 30, 45, 60];
     var slider = document.getElementById("time");
     var output = document.getElementById("valueOfSlider");
-    output.innerHTML = slider.value; 
+    output.innerHTML = valuesOfSlider1[slider.value]; 
     slider.oninput = function() {
-    output.innerHTML = this.value;
+    output.innerHTML = valuesOfSlider1[slider.value];
     }
 
     //show actual value of second slider
+    var valuesOfSlider2 = [0, 5, 10, 20, 30, 45, 60, 90, 120]
     var slider2 = document.getElementById("afterMove");
     var output2 = document.getElementById("valueOfSlider2");
-    output2.innerHTML = slider2.value; 
+    output2.innerHTML = valuesOfSlider2[slider2.value] 
     slider2.oninput = function() {
-    output2.innerHTML = this.value;
+    output2.innerHTML = valuesOfSlider2[slider2.value];
     }
 
     //create folder for the figure choice
@@ -159,7 +175,7 @@ function createF() {
     startBut.setAttribute("value", "Start Game");
     startBut.setAttribute("class", "menu-controls");
     startBut.setAttribute("id", "start-button");
-    startBut.setAttribute("onclick", "window.location='game.html';");
+    startBut.setAttribute("onclick", "startGame()");
     // this should send a from should send a message through the WebSocket declared in client.js (const socket)
     // with the time, increment and side parameters
     // use socket.send(JSON.stringify(message)) where message is a map of these elements
@@ -167,7 +183,7 @@ function createF() {
 }
 
 function joinF() {
-    alert("not yet");
+    alert("No ongoing games at the moment \\(◕◡◕)/");
 }
 
 function backF() {
@@ -235,4 +251,30 @@ function randomCheck() {
     } else {
         document.getElementById("whites").checked = true;
     }
+}
+
+//start
+function startGame() {
+    //info to send
+    var time = document.getElementById("minutes").value;
+    var interval = document.getElementById("seconds").value;
+    var side = "";
+
+    //other shit
+    var whites = document.getElementById("whites");
+    var blacks = document.getElementById("blacks");
+    if (whites.checked === true) {
+        side = "white";
+    } else if (blacks.checked === true) {
+        side = "black";
+    } else {
+        side = "random";
+    }
+
+    var message = {
+        "time": time,
+        "interval": interval,
+        "side": side
+    }
+
 }
