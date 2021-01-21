@@ -119,9 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         remove(pos, value) {
-            console.log('remove ', value, ' from ', pos, ', lookup: ', this.fields[pos.y - 1][pos.x - 1]);
-            this.fields[pos.y - 1][pos.x - 1] = this.get(pos).filter(item => !item.equals(value));
-            console.log('after: ', typeof this.fields[pos.y - 1][pos.x - 1]);
+            this.fields[pos.y - 1][pos.x - 1] = this.get(pos).filter(item => {return !item.equals(value)}); // has to be {return ...}
         }
 
         clear(pos) {
@@ -140,6 +138,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         getPiece() {
             return this.piece;
+        }
+
+        getTileElement() {
+            return document.getElementById('tile' + this.row + this.col);
         }
 
         // Initializes the tile with a default piece
@@ -177,24 +179,39 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        clearPieceView() {
-            
+        // Adds the specified piece to the tile
+        addPiece(piece) {
+            if (this.piece != null)
+                throw 'addPiece but piece already exists';
+            this.piece = piece;
+            this.piece.generateView(this.getTileElement());
         }
 
+        // Deletes tile's piece
+        deletePiece() {
+            if (this.piece == null)
+                throw 'deletePiece but piece doesn\'t exist';
+
+            this.getTileElement().removeChild(this.getTileElement().firstChild);
+            this.piece = null;
+        }
+
+        // Moves piece from this tile to another tile
         movePiece(other) {
             var pieceElement = document.getElementById('tile' + this.row + this.col).firstChild;
             other.acceptPiece(pieceElement, this.piece);
             this.piece = null;
         }
 
+        // Accepts a piece moved from another tile
         acceptPiece(pieceElement, piece) {
-            let tile = document.getElementById('tile' + this.row + this.col);
             if (this.piece != null)
-                tile.removeChild(tile.firstChild);
+                this.deletePiece();
             this.piece = piece;
-            tile.prepend(pieceElement); 
+            this.getTileElement().prepend(pieceElement); 
         }
 
+        // Highlights the piece
         enableHighlight() {
             let piece = document.getElementById('tile' + this.row + this.col).getElementsByTagName("*")[0];
             piece.classList.add('tile-highlighted');
@@ -232,8 +249,7 @@ document.addEventListener('DOMContentLoaded', () => {
     class Board {
         constructor() {
             this.tiles = [];
-            this.attacks = new Array2D(8, 8);
-            this.blocks = new Array2D(8, 8);
+            this.attackedBy = new Array2D(8, 8);
             this.currentPosition = null;
             this.currentPlayerColor = 'white';
             this.players = {
@@ -337,6 +353,23 @@ document.addEventListener('DOMContentLoaded', () => {
             return doublePawn != null && doublePawn.equals(pos);
         }
 
+        // Checks whether the king of a given color can castle by moving to the specified position
+        canCastle(pos, color = this.currentPlayerColor) {
+            var kingPos = this.getKingPosition(color), rookPos = new Position(pos.x == 7 ? 8 : 1, kingPos.y);
+            if (this.getCurrentPlayer().kingMoved || Math.abs(kingPos.x - pos.x) != 2 || kingPos.y - pos.y != 0 || this.isChecked(color) || this.getPiece(kingPos).getColor() != color || !this.getPiece(rookPos) || this.getPiece(rookPos).getColor() != color)
+                return false;
+
+            // Make sure the tiles king passes through aren't threatened
+            var dir = kingPos.getDirection(rookPos);
+            do {
+                kingPos.add(dir);
+                if (this.getUnfriendlyAttacks(kingPos, color).length != 0 || this.hasPiece(kingPos))
+                    return false;
+            } while (!kingPos.equals(pos));
+
+            return true;
+        }
+
         pieceDirs = {
             'king': [],
             'knight': [],
@@ -348,32 +381,33 @@ document.addEventListener('DOMContentLoaded', () => {
     
         pieceMoves = {
             'king': [new ConditionedPosition(-1, 0, Tile.valid), new ConditionedPosition(1, 0, Tile.valid), new ConditionedPosition(0, -1, Tile.valid), new ConditionedPosition(0, 1, Tile.valid), 
-                     new ConditionedPosition(-1, 1, Tile.valid), new ConditionedPosition(-1, -1, Tile.valid), new ConditionedPosition(1, 1, Tile.valid), new ConditionedPosition(1, -1, Tile.valid)],
+                     new ConditionedPosition(-1, 1, Tile.valid), new ConditionedPosition(-1, -1, Tile.valid), new ConditionedPosition(1, 1, Tile.valid), new ConditionedPosition(1, -1, Tile.valid),
+                     new ConditionedPosition(-2, 0, (pos) => {return this.canCastle(pos);}), new ConditionedPosition(2, 0, (pos) => {return this.canCastle(pos);})],
             'knight': [new ConditionedPosition(1, 2, Tile.valid), new ConditionedPosition(1, -2, Tile.valid), new ConditionedPosition(-1, 2, Tile.valid), new ConditionedPosition(-1, -2, Tile.valid), 
                      new ConditionedPosition(2, 1, Tile.valid), new ConditionedPosition(2, -1, Tile.valid), new ConditionedPosition(-2, 1, Tile.valid), new ConditionedPosition(-2, -1, Tile.valid)],
             'whitepawn': [new ConditionedPosition(0, 1, (pos) => {return !this.hasFriendlyPiece(pos)}), new ConditionedPosition(0, 2, (pos) => {return !this.hasFriendlyPiece(pos) && !this.hasFriendlyPiece(new Position(pos.x, pos.y - 1)) && pos.y == 4}),
-                        new ConditionedPosition(1, 1, (pos) => {return this.hasEnemyPiece(pos) || (this.enemyDoubleMove(new Position(pos.x, pos.y - 1)) && pos.y == 5)}), 
-                        new ConditionedPosition(-1, 1, (pos) => {return this.hasEnemyPiece(pos) || (this.enemyDoubleMove(new Position(pos.x, pos.y - 1)) && pos.y == 5)})],
+                        new ConditionedPosition(1, 1, (pos) => {return this.hasEnemyPiece(pos) || (this.enemyDoubleMove(new Position(pos.x, pos.y - 1)) && pos.y == 6)}), 
+                        new ConditionedPosition(-1, 1, (pos) => {return this.hasEnemyPiece(pos) || (this.enemyDoubleMove(new Position(pos.x, pos.y - 1)) && pos.y == 6)})],
             'blackpawn': [new ConditionedPosition(0, -1, (pos) => {return !this.hasFriendlyPiece(pos)}), new ConditionedPosition(0, -2, (pos) => {return !this.hasFriendlyPiece(pos) && !this.hasFriendlyPiece(new Position(pos.x, pos.y + 1)) && pos.y == 5}),
-                        new ConditionedPosition(1, -1, (pos) => {return this.hasEnemyPiece(pos) || (this.enemyDoubleMove(new Position(pos.x, pos.y + 1)) && pos.y == 4)}), 
-                        new ConditionedPosition(-1, -1, (pos) => {return this.hasEnemyPiece(pos) || (this.enemyDoubleMove(new Position(pos.x, pos.y + 1)) && pos.y == 4)})],
+                        new ConditionedPosition(1, -1, (pos) => {return this.hasEnemyPiece(pos) || (this.enemyDoubleMove(new Position(pos.x, pos.y + 1)) && pos.y == 3)}), 
+                        new ConditionedPosition(-1, -1, (pos) => {return this.hasEnemyPiece(pos) || (this.enemyDoubleMove(new Position(pos.x, pos.y + 1)) && pos.y == 3)})],
             'bishop': [],
             'rook': [],
             'queen': []
         }
 
         // Returns all positions of unfriendly pieces attacking at a given position
-        getUnfriendlyAttacks(pos, color) {
-            return this.attacks.get(pos).filter(pos => this.hasPiece(pos) && this.getPiece(pos).getColor() != color);
+        getUnfriendlyAttacks(pos, color = this.currentPlayerColor) {
+            return this.attackedBy.get(pos).filter(pos => {return this.hasPiece(pos) && this.getPiece(pos).getColor() != color});
         }
 
         // Retrieves all legal moves (destinations) of the piece at specified position
-        getLegalMoves(pos) {
+        getLegalMoves(from) {
             var moves = [];
             // Account for directions
-            console.log('getLegalMoves ', pos);
-            for (var dir of this.pieceDirs[this.getPiece(pos).getType()]) {
-                var to = pos.addDeep(dir);
+            var dirs = this.pieceDirs[this.getPiece(from).getType()];
+            for (var dir of dirs) {
+                var to = from.addDeep(dir);
                 while (Tile.valid(to)) {
                     moves.push(to);
                     if (this.hasPiece(to))
@@ -383,26 +417,46 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Account for moves
-            let offsets = this.pieceMoves[this.getPiece(pos).getFullType()];
+            let offsets = this.pieceMoves[this.getPiece(from).getFullType()];
             for (var offset of offsets)
             {
-                var to = pos.addDeep(offset.pos);
-                var c = offset.condition;
-                if (Tile.valid(to) && c(to))
+                var to = from.addDeep(offset.pos);
+                if (Tile.valid(to) && offset.condition(to))
                     moves.push(to);
             }
+
             return moves;
+        }
+        
+        // Retrieves all legal moves and pawn's side attacks that aren't legal
+        // when they don't contain an enemy piece
+        getAttackMoves(from) {
+            var piece = this.getPiece(from);
+            if (piece.getType() != 'pawn')
+            {
+                // If the piece is a king, filter out the castle moves
+                if (piece.getType() == 'king') 
+                    return this.getLegalMoves(from).filter(to => {return Math.abs(this.getKingPosition(this.currentPlayerColor).x - to.x) < 2;});
+                return this.getLegalMoves(from);
+            }
+            
+            var mul = (piece.getColor() == 'white' ? 1 : -1);
+            return [new Position(from.x + 1, from.y + 1 * mul), new Position(from.x - 1, from.y + 1 * mul)].filter(to => Tile.valid(to)); // here no {} works
         }
 
         // Initiates the piece's attacks' table
         initPieceAttacks(attackerPos) {
-            var legalMoves = this.getLegalMoves(attackerPos);
-            var attackerIsLine = this.getPiece(attackerPos).isLine();
-            for (var defenderPos of legalMoves) {
-                this.attacks.add(defenderPos, attackerPos);
-                if (this.hasPiece(defenderPos) && attackerIsLine)
-                    this.blocks.add(defenderPos, attackerPos);
-            }
+            var attackMoves = this.getAttackMoves(attackerPos);
+            for (var defenderPos of attackMoves)
+                this.attackedBy.add(defenderPos, attackerPos);
+        }
+
+        // Deinitializes piece's attacks' table
+        deinitPieceAttacks(attackerPos) {
+            var attackMoves = this.getAttackMoves(attackerPos);
+            var piece = this.getPiece(attackerPos);
+            for (var defenderPos of attackMoves)
+                this.attackedBy.remove(defenderPos, attackerPos);
         }
 
         // Initializes all attacks on board
@@ -412,64 +466,49 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.initPieceAttacks(pos);
         }
 
-        executeMove(from, to) {
-            // If a piece is taken, push it to the lost pieces list
-            if (this.hasPiece(to)) {
-                this.getOppositePlayer().lostPieces.push(this.getPiece(to));
-            }
-            
-            // Clear the previous double pawn move, and if this is one, save it
-            this.getCurrentPlayer().doublePawn = null;
-            if (Math.abs(from.y - to.y) == 2 && this.getPiece(from) == 'pawn')
-                this.getCurrentPlayer().doublePawn = to;
-            
-            // Move the piece 'physically' and turn variables
-            this.getTile(from).movePiece(this.getTile(to));
-            this.currentPlayerColor = this.getOppositePlayerColor();
-            this.setCurrentPosition(null);
+        physicalRemovePiece(pos) {
+            if (!this.getPiece(pos))
+                throw 'pieceRemove but the tile doesn\'t have a piece';
+
+            this.deinitPieceAttacks(pos);
+            var affected = this.attackedBy.get(pos).filter(pos => this.getPiece(pos).isLine());
+            for (var apos of affected)
+                this.deinitPieceAttacks(apos);
+            this.getOppositePlayer().lostPieces.push(this.getPiece(pos));
+            this.getTile(pos).deletePiece();
+            for (var apos of affected)
+                this.initPieceAttacks(apos);
         }
 
-        // Recalculates the attacks and blocks and executed the move
-        recalculateAttacks(attackerOldPos, attackerNewPos) {
-            // Remove current attacks
-            console.log('recalculateAttacks ', attackerOldPos, attackerNewPos);
-            var oldLegalMoves = this.getLegalMoves(attackerOldPos), attackerIsLine = this.getPiece(attackerOldPos).isLine();
-            for (var defenderPos of oldLegalMoves) {
-                this.attacks.remove(defenderPos, attackerOldPos);
-                if (this.hasPiece(defenderPos) && attackerIsLine)
-                    this.blocks.remove(defenderPos, attackerOldPos)
-            }
+        physicalAddPiece(pos, piece) {
+            if (this.getPiece(pos))
+                throw 'piecePlace but the tile already has a piece';
+
+            var affected = this.attackedBy.get(pos).filter(pos => this.getPiece(pos).isLine());
+            for (var apos of affected)
+                this.deinitPieceAttacks(apos);
+            this.getTile(pos).addPiece(piece);
+            this.initPieceAttacks(pos);
+            for (var apos of affected)
+                this.initPieceAttacks(apos);
+        }
+
+        physicalMovePiece(from, to) {
+            if (!this.getPiece(from))
+                throw 'pieceMove but the starting tile doesn\'t have a piece';
             
-            // Position of the attacker changes, some pieces' attacks might get unblocked
-            var unblockedAttackers = [];
-            if (!attackerOldPos.equals(attackerNewPos)) {
-                // Recalculate attacks of all positions blocked by the attacker's position
-                // and remove all blockers (as there isn't a piece blocking anything anymore)
-                unblockedAttackers = this.blocks.get(attackerOldPos);
-                this.blocks.clear(attackerOldPos);
+            var affected = this.attackedBy.get(from).filter(pos => this.getPiece(pos).isLine());
+        
+            if (this.getPiece(to)) this.getOppositePlayer().lostPieces.push(this.getPiece(to));
+            else                   affected.push(...this.attackedBy.get(to).filter(pos => this.getPiece(pos).isLine() && !pos.equals(from)));
 
-                // If the new position is occupied, the occupying piece is taken, hence
-                // its attacks have to be removed. Since the attacker takes the occupied
-                // position, blocks don't change
-                if (this.hasPiece(attackerNewPos)) {
-                    var oldAttackerLegalMoves = this.getLegalMoves(attackerNewPos);
-                    for (var defenderPos of oldAttackerLegalMoves)
-                        this.attacks.remove(defenderPos, attackerNewPos);
-                }
-
-                // Execute the move
-                this.executeMove(attackerOldPos, attackerNewPos);
-            }
-
-            // Initialize attackers' attacks on its new position
-            this.initPieceAttacks(attackerNewPos);
-            console.log('recalculateAttacks initiated piece attacks');
-
-            // Now that the piece is moved, the unblocked positions can recalculate their attacks
-            console.log('recalculateAttacks recurse');
-            for (var unblockedAttacker of unblockedAttackers)
-                this.recalculateAttacks(unblockedAttacker, unblockedAttacker);
-            console.log('recalculateAttacks exit');
+            this.deinitPieceAttacks(from);
+            for (var apos of affected)
+                this.deinitPieceAttacks(apos);
+            this.getTile(from).movePiece(this.getTile(to));
+            this.initPieceAttacks(to);
+            for (var apos of affected)
+                this.initPieceAttacks(apos);
         }
 
         // Retrieves positions of all pieces of the specified color
@@ -518,13 +557,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (this.hasPiece(to) && this.getPiece(to).getColor() == this.currentPlayerColor)
                 return false;
             
-            var blockedPieces = this.blocks.get(from);
-            console.log('pieceCanMove (', from , ', ', to, ') - start');
-            console.log('blocked: ', blockedPieces);
+            var blockedPieces = this.getUnfriendlyAttacks(from).filter(pos => this.getPiece(pos).isLine());
             for (var attackerPos of blockedPieces) {
-                // If the attacker is in line with the blocking piece, and the scan from the attacker
-                // to the blocking piece (skipping the blocking piece) hits the king, the piece is pinned
-                if (this.getPiece(attackerPos).getColor() != this.currentPlayerColor && this.isInLineWith(attackerPos, from)) {
+                // If the attacker is a line piece, moving this piece might expose the king to a check
+                if (!from.getDirection(to).equals(from.getDirection(attackerPos))) {
                     var scanResult = this.lineScan(attackerPos, attackerPos.getDirection(from), from);
                     if (scanResult.piece != null && scanResult.piece.getType() == 'king' && scanResult.piece.getColor() == this.currentPlayerColor)
                         return false;
@@ -598,9 +634,38 @@ document.addEventListener('DOMContentLoaded', () => {
         // This function doesn't check whether the move is valid
         movePiece(from, to) {
             var legalMoves = this.getLegalMoves(from);
-            console.log('movePiece ', from, to, legalMoves.filter(move => move.equals(to)).length != 0, this.pieceCanMove(from, to));
-            if (legalMoves.filter(move => move.equals(to)).length != 0 && this.pieceCanMove(from, to))
-                this.recalculateAttacks(from, to);
+            if (legalMoves.filter(move => move.equals(to)).length != 0 && this.pieceCanMove(from, to)) {
+                // If a piece is taken, push it to the lost pieces list
+                if (this.hasPiece(to)) 
+                    this.getOppositePlayer().lostPieces.push(this.getPiece(to));
+                
+                // Clear the previous double pawn move, and if this is one, save it
+                this.getCurrentPlayer().doublePawn = null;
+                if (Math.abs(from.y - to.y) == 2 && this.getPiece(from).getType() == 'pawn')
+                    this.getCurrentPlayer().doublePawn = to;
+
+                // If it's the king moving, save that information
+                if (this.getPiece(from).getType() == 'king')
+                {
+                    this.getCurrentPosition().kingMoved = true;
+                    // If the move is a castle, move the rook first and set castle variables
+                    if (Math.abs(from.x - to.x) == 2)
+                    {
+                        this.getCurrentPlayer().hasCastled = true;
+                        this.physicalMovePiece(new Position(to.x == 7 ? 8 : 1, from.y), new Position(to.x == 7 ? 6 : 4, from.y));
+                    }
+                }
+
+                // If it's en passsant, delete the pawn next to the piece
+                if (this.getPiece(from).getType() == 'pawn' && !this.getPiece(to) && Math.abs(to.x - from.x) == 1 && Math.abs(to.y - from.y) == 1)
+                    this.physicalRemovePiece(new Position(to.x, from.y));
+
+                // Execute the move
+                this.physicalMovePiece(from, to);
+                this.currentPlayerColor = this.getOppositePlayerColor();
+                this.setCurrentPosition(null);
+            }
+                
         }
 
         // Initializes the board with tiles and default pieces
@@ -629,9 +694,6 @@ document.addEventListener('DOMContentLoaded', () => {
     var board = new Board();
     board.initializeDefault();
     board.generateView(tiles);
-    console.log(board);
-    console.log('attacks: ', board.attacks);
-    console.log('blocks: ', board.blocks);
 
     // Add the onclick function that allows players to move pieces
     function onClick(event) {
@@ -641,21 +703,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (currentPosition != null && (!board.hasPiece(newPosition) || board.getPiece(newPosition).getColor() != board.getCurrentPlayerColor()))
         {
-            console.log('MOVING PIECE');
             board.movePiece(currentPosition, newPosition);
-            /*var gameState = board.calculateGameState();
+            var gameState = board.calculateGameState();
             if (gameState != 'unresolved')
-                window.alert(gameState);*/
-            console.log('attacks: ', board.attacks);
-            console.log('blocks: ', board.blocks);
+                window.alert(gameState);
         }
             
         else if (board.hasPiece(newPosition) && board.getPiece(newPosition).getColor() == board.getCurrentPlayerColor())
-        {
             board.setCurrentPosition(newPosition);
-            console.log('START');
-            console.log('END:', board.getPieceMoves(newPosition));
-        }
     }
+
+    
     boardDiv.addEventListener("click", onClick);
 });
