@@ -144,3 +144,7 @@ h2 {
 .game-state {
   visibility: hidden;
 }
+
+#state-message {
+  right: 0px;
+}
