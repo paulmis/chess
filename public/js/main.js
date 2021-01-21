@@ -217,11 +217,19 @@ document.addEventListener('DOMContentLoaded', () => {
             piece.classList.add('tile-highlighted');
         }
 
+        // Removes the highlight
+        disableHighlight() {
+            let piece = document.querySelector('.tile-highlighted');
+            if (piece)
+                piece.classList.remove('tile-highlighted');
+        }
+
         static valid(pos) {
             return pos.x > 0 && pos.y > 0 && pos.x <= 8 && pos.y <= 8;
         }
     }
 
+    // A class representing a player
     class Player {
         constructor(side) {
             this.side = side;
@@ -263,15 +271,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         setCurrentPosition(pos) {
-            if (this.currentPosition != null) this.disableHighlight();
+            if (this.currentPosition != null) this.getTile(this.currentPosition).disableHighlight();
             if (pos != null)                  this.getTile(pos).enableHighlight();
             this.currentPosition = pos;
         }
 
-        disableHighlight() {
-            let piece = document.querySelector('.tile-highlighted');
-            if (piece)
-                piece.classList.remove('tile-highlighted');
+        resetCurrentPosition() {
+            this.setCurrentPosition(null);
         }
 
         getTile(pos) {
@@ -466,6 +472,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.initPieceAttacks(pos);
         }
 
+        // Recalculates attacks of all pieces that could be affected by the piece being removed
+        // Draws the change on the game screens
         physicalRemovePiece(pos) {
             if (!this.getPiece(pos))
                 throw 'pieceRemove but the tile doesn\'t have a piece';
@@ -480,6 +488,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.initPieceAttacks(apos);
         }
 
+        // Recalculates attacks of all pieces that could be affected by the piece being added
+        // Draws the change on the game screens
         physicalAddPiece(pos, piece) {
             if (this.getPiece(pos))
                 throw 'piecePlace but the tile already has a piece';
@@ -493,6 +503,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.initPieceAttacks(apos);
         }
 
+        // Recalculates attacks of all pieces that could be affected by the piece moving
+        // Draws the change on the game screens
         physicalMovePiece(from, to) {
             if (!this.getPiece(from))
                 throw 'pieceMove but the starting tile doesn\'t have a piece';
@@ -690,6 +702,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    class Game {
+        constructor(time, increment) {
+            this.time = time;
+            this.increment = increment;
+        }
+    }
+
     // Generate a new board and initiate it with default pieces
     var board = new Board();
     board.initializeDefault();
@@ -701,12 +720,17 @@ document.addEventListener('DOMContentLoaded', () => {
         let currentPosition = board.getCurrentPosition();
         let newPosition = new Position(1 + Math.floor((event.clientX - box.x) / 80), 8 - Math.floor((event.clientY - box.y) / 80));
 
-        if (currentPosition != null && (!board.hasPiece(newPosition) || board.getPiece(newPosition).getColor() != board.getCurrentPlayerColor()))
+        if (currentPosition != null)
         {
-            board.movePiece(currentPosition, newPosition);
-            var gameState = board.calculateGameState();
-            if (gameState != 'unresolved')
-                window.alert(gameState);
+            if (!board.hasPiece(newPosition) || board.getPiece(newPosition).getColor() != board.getCurrentPlayerColor()) {
+                board.movePiece(currentPosition, newPosition);
+                var gameState = board.calculateGameState();
+                if (gameState != 'unresolved')
+                    window.alert(gameState);
+            }
+
+            else if (currentPosition.equals(newPosition))
+                board.resetCurrentPosition();
         }
             
         else if (board.hasPiece(newPosition) && board.getPiece(newPosition).getColor() == board.getCurrentPlayerColor())

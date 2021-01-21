@@ -14,10 +14,12 @@ h1 {
 }
 
 .main-content {
+  display: flex;
   margin-top: 10vh;
-  margin-left: 25vw;
-  margin-right: 25vw;
+  margin-left: 15vw;
+  margin-right: 15vw;
   text-align: center;
+  justify-content: center;
 }
 
 .start-game {
@@ -59,7 +61,7 @@ h1 {
   height: 640px;
   width: 640px;
   box-shadow: 0px 0px 8px 6px #ccc;
-  margin:auto;
+  margin: 30px;
 }
 
 .tiles {
@@ -84,7 +86,7 @@ h1 {
 }
 
 .tile-white {
-  background: #f1dcbd;
+  background-color: #f1dcbd;
   color: #AA7C56;
 }
 
@@ -114,5 +116,31 @@ h1 {
 }
 
 .tile-highlighted {
-  background-color: rgba(134, 235, 66, 0.4);
+  background-color: rgba(125, 233, 53, 0.4);
+}
+
+.menu {
+  position: relative;
+  width: 200px;
+  display: flex;
+  align-items: top;
+  margin:20px;
+  justify-content: left;
+}
+
+h2 {
+  font-size: 6vmin;
+  line-height: 10px;
+}
+
+.time {
+  text-align: left;
+}
+
+.nobr {
+  white-space: nowrap;
+}
+
+.game-state {
+  visibility: hidden;
 }
