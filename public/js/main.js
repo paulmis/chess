@@ -703,9 +703,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     class Game {
-        constructor(time, increment) {
+        constructor(time, increment, foundi) {
             this.time = time;
             this.increment = increment;
+            this.players = {};
+            this.state = 'unstarted'
+            this.board = null;
+        }
+
+        addPlayer(player, color) {
+            this.players[color] = player;
+        }
+
+        canStart() {
+            return this.players.length == 2;
+        }
+
+        start() {
+            this.board = new Board();
+            this.board.initializeDefault();
         }
     }
 

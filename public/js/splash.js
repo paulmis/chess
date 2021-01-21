@@ -160,6 +160,9 @@ function createF() {
     startBut.setAttribute("class", "menu-controls");
     startBut.setAttribute("id", "start-button");
     startBut.setAttribute("onclick", "window.location='game.html';");
+    // this should send a from should send a message through the WebSocket declared in client.js (const socket)
+    // with the time, increment and side parameters
+    // use socket.send(JSON.stringify(message)) where message is a map of these elements
     controlMenu.appendChild(startBut);
 }
 
