@@ -21,15 +21,16 @@ app.get("/game", function(req, res) {
     res.sendFile('public/game.html', {root: __dirname});
 })
 
-const wss = new websocket.Server({server});
+// Periodically update stats
+var gamesPlayed = 0, gamesRunning = 0;
+app.get('/stats', function(req, res) {
+    res.status(200).send(JSON.stringify({
+        'gamesPlayed': gamesPlayed,
+        'gamesRunning': gamesRunning
+    }));
+});
 
-class GameStats {
-    constructor() {
-        this.gamesPlayed = 0;
-        this.gamesRunning = 0;
-        this.gamesWaiting = 0;
-    }
-}
+const wss = new websocket.Server({server});
 
 var games = new Map();
 var players = new Map();
@@ -43,8 +44,6 @@ function getUnstartedGameUid() {
     return null;
 }
 
-let lifetimeStats = new GameStats();
-
 function startGame(gameUid) {
     var game = games.get(gameUid);
     if (game.canStart() && game.start()) {
@@ -55,6 +54,7 @@ function startGame(gameUid) {
                 'side': color
             }));
         }
+        gamesRunning++;
         console.log('game ', gameUid, ' started');
         return true;
     }
@@ -66,6 +66,10 @@ wss.on("connection", function connection(ws, req) {
     ws.uid = uuidv4();
     players[ws.uid] = ws;
     console.log('new connection - ', ws.uid);
+
+    setTimeout(function() {
+
+    })
     
     ws.on('message', function incoming(jsonMessage) {
         var message = JSON.parse(jsonMessage);
@@ -132,6 +136,7 @@ wss.on("connection", function connection(ws, req) {
 
                     // Inform that the game ended
                     if (game.getState() != 'unresolved') {
+                        gamesRunning--; gamesPlayed++;
                         ws.send(JSON.stringify({
                             'type': 'finished',
                             'winner': game.getState()

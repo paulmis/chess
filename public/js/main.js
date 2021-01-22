@@ -8,6 +8,10 @@ class Position {
         this.x = x;
         this.y = y;
     }
+
+    equals(other) {
+        return other != null && this.x == other.x && this.y == other.y;
+    }
 }
 
 class Piece {
@@ -343,7 +347,7 @@ function onClick(event) {
             }));
         }
 
-        else if (currentPosition.equals(newPosition))
+        else if (board.hasPiece(newPosition))
             board.resetCurrentPosition();
     }
         
