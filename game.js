@@ -624,7 +624,7 @@ class Game {
     constructor(founder, time = 15, increment = 2, color = 'random') {
         this.time = time;
         this.increment = increment;
-        this.playerKeys = new Map();
+        this.playerUids = new Map();
         this.startingColor = color;
         this.state = 'unstarted'
         this.board = null;
@@ -634,29 +634,27 @@ class Game {
 
     // Adds a player and returns its uid
     addPlayer(uid, color) {
-        if (this.playerKeys.size > 1)
+        if (this.playerUids.size > 1)
             throw 'cannot add a 3rd player...';
-        if (this.playerKeys.size != 0)
-            color = this.playerKeys.get('white') ? 'black' : 'white';
+        if (this.playerUids.size != 0)
+            color = this.playerUids.get('white') ? 'black' : 'white';
         else if (!['white', 'black'].includes(color))
             color = ['white', 'black'][Math.floor(Math.random() * 2)];
-        this.playerKeys.set(color, uid);
+        this.playerUids.set(color, uid);
     }
 
     canStart() {
-        console.log('playerKeys: ', this.playerKeys);
-        if (this.playerKeys.size > 2)
+        if (this.playerUids.size > 2)
             throw 'game has more than two players';
-        return this.playerKeys.size == 2;
+        return this.playerUids.size == 2;
     }
 
     start() {
         this.board = new Board();
         this.board.initializeDefault();
-        console.log('playerKeys: ', this.playerKeys);
 
         // Successful initialization
-        if (this.playerKeys.size == 2) {
+        if (this.playerUids.size == 2) {
             this.state = 'unresolved';
             this.board.currentPlayerColor = 'white';
             return true;
@@ -678,20 +676,36 @@ class Game {
         return moveSucessful;
     }
 
-    getCurrentPlayerKey() {
-        return this.playerKeys.get(this.board.getCurrentPlayerColor());
+    getCurrentPlayerUid() {
+        return this.playerUids.get(this.board.getCurrentPlayerColor());
     }
 
-    getPlayerKeysAndColors() {
-        return this.playerKeys;
+    getPlayerUidsAndColors() {
+        return this.playerUids;
     }
 
-    getPlayersKeys() {
-        return [this.playerKeys.get('white'), this.playerKeys.get('black')].filter(key => key != null);
+    getPlayerUids() {
+        return [this.playerUids.get('white'), this.playerUids.get('black')].filter(key => key != null);
     }
 
-    getInitialPlayerKey() {
-        return this.playerKeys[this.startingColor];
+    getInitialPlayerUid() {
+        return this.playerUids[this.startingColor];
+    }
+
+    // Checks whether this game has a particular player
+    hasPlayer(uid) {
+        for (var [color, playerUid] of this.playerUids) {
+            if (playerUid == uid)
+                return color;
+        }
+        return null;
+    }
+
+    // The player on the specified side has abandoned the game
+    // Sets the appropriate game state
+    playerAbandoned(side) {
+        if (this.playerUids.size == 1) this.state = 'abandoned';
+        else this.state = side == 'white' ? 'black' : 'white';
     }
 };
 

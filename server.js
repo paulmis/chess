@@ -3,7 +3,8 @@ var http = require("http");
 var websocket = require("ws")
 const Game = require('./game.js');
 const { v4: uuidv4 } = require('uuid');
-var bodyParser = require('body-parser')
+var bodyParser = require('body-parser');
+const { finished } = require("stream");
 
 var port = process.env.PORT | '3000';
 
@@ -47,8 +48,8 @@ function getUnstartedGameUid() {
 function startGame(gameUid) {
     var game = games.get(gameUid);
     if (game.canStart() && game.start()) {
-        for (const [color, playerUid] of game.getPlayerKeysAndColors()) {
-            players[playerUid].send(JSON.stringify({
+        for (const [color, playerUid] of game.getPlayerUidsAndColors()) {
+            players.get(playerUid).send(JSON.stringify({
                 'type': 'start',
                 'gameUid': gameUid,
                 'side': color
@@ -62,9 +63,44 @@ function startGame(gameUid) {
     return false;
 }
 
+function finishGame(gameUid) {
+    var game = games.get(gameUid), state = game.getState();
+    if (state != 'unresolved') {
+        // Construct a message with result details
+        var message = {
+            'type': 'finished'
+        }
+        if (state == 'abandoned') 
+            message.result = 'abandoned'
+        else {
+            gamesPlayed++;
+            gamesRunning--;
+            if (state == 'stalemate') {
+                message.result = 'stalemate',
+                message.winner = 'none'
+            } else {
+                message.result = 'checkmate',
+                message.winner = state
+            }
+        }
+
+        // Send the message to all players
+        var finishedPlayers = game.getPlayerUids();
+        for (var playerUid of finishedPlayers) {
+            var connection = players.get(playerUid);
+            if (connection)
+                connection.send(JSON.stringify(message));
+        }
+
+        // Remove the game from the games list
+        console.log('finished ', gameUid, ' - ', message);
+        games.delete(gameUid);
+    }
+}
+
 wss.on("connection", function connection(ws, req) {
     ws.uid = uuidv4();
-    players[ws.uid] = ws;
+    players.set(ws.uid, ws);
     console.log('new connection - ', ws.uid);
 
     setTimeout(function() {
@@ -115,38 +151,24 @@ wss.on("connection", function connection(ws, req) {
                 break;
             case 'move':
                 var game = games.get(message.gameUid);
-                if (game.getState() == 'unresolved' && ws.uid == game.getCurrentPlayerKey() && game.attemptMove(message)) {
+                if (game.getState() == 'unresolved' && ws.uid == game.getCurrentPlayerUid() && game.attemptMove(message)) {
                     // Affirm the move was successful
-                    ws.send(JSON.stringify({
-                        'type': 'move',
-                        'moved': 'yes',
-                        'side': game.board.getCurrentPlayerColor(),
-                        'from': message.from,
-                        'to': message.to
-                    }));
-
-                    // Wait for the next player's move
-                    players[game.getCurrentPlayerKey()].send(JSON.stringify({
-                        'type': 'move',
-                        'moved': 'yes',
-                        'side': game.board.getCurrentPlayerColor(),
-                        'from': message.from,
-                        'to': message.to
-                    }));
-
-                    // Inform that the game ended
-                    if (game.getState() != 'unresolved') {
-                        gamesRunning--; gamesPlayed++;
-                        ws.send(JSON.stringify({
-                            'type': 'finished',
-                            'winner': game.getState()
-                        }));
-                        players[game.getCurrentPlayerKey()].send(JSON.stringify({
-                            'type': 'finished',
-                            'winner': game.getState()
-                        }));
+                    var playerUids = game.getPlayerUids();
+                    for (var playerUid of playerUids) {
+                        if (players.get(playerUid))
+                            players.get(playerUid).send(
+                                JSON.stringify({
+                                'type': 'move',
+                                'moved': 'yes',
+                                'side': game.board.getCurrentPlayerColor(),
+                                'from': message.from,
+                                'to': message.to
+                            }));
                     }
 
+                    // Inform that the game ended
+                    if (game.getState() != 'unresolved') 
+                        finishGame(gameUid);
                 } else {
                     // Message that the move wasn't successful
                     ws.send(JSON.stringify({
@@ -160,7 +182,19 @@ wss.on("connection", function connection(ws, req) {
     });
 
     ws.on('close', function(message) {
-        console.log('end connection ' - ws.uid);
+        console.log('end connection - ', ws.uid);
+
+        for (var [gameUid, game] of games) {
+            var playerSide = game.hasPlayer(ws.uid);
+            if (playerSide) {
+                game.playerAbandoned(playerSide);
+                finishGame(gameUid);
+                break;
+            }
+        }
+
+        if (awaiting[0] == ws.uid)
+            awaiting = [];
         players.delete(ws.uid);
     });
 })

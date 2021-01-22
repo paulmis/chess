@@ -399,24 +399,26 @@ socket.onmessage = function(event) {
     console.log("RECIEVED ", message);
     switch (message.type) {
         case 'created':
-            document.getElementById('class-message').innerHTML = 'waiting for another player to join...';
+            document.getElementById('general-message').innerHTML = 'waiting for another player to join...';
             break;
         case 'waiting':
-            document.getElementById('class-message').innerHTML = 'waiting for another player to start a game...';
+            document.getElementById('general-message').innerHTML = 'waiting for another player to start a game...';
+            break;
         case 'start':
             if (message.side != side) {
                 side = message.side;
                 board.generateView(tiles, side);
             }
             boardDiv.addEventListener("click", onClick);
-            document.getElementById('class-message').innerHTML = ''
+            document.getElementById('general-message').innerHTML = ''
             gameUid = message.gameUid;
+            break;
         case 'move':
             if (message.moved == 'yes') 
                 board.movePiece(new Position(message.from.x, message.from.y), new Position(message.to.x, message.to.y));
             break;
         case 'finished':
-            document.getElementById('class-message').innerHTML = 'game finished - ' + message.winner + ' won!';
+            document.getElementById('general-message').innerHTML = 'game finished - ' + message.winner + ' won!';
         case 'updateStats':
             // update stats
     }
