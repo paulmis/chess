@@ -80,8 +80,8 @@ function createF() {
 
     //remove menu buttons
     var toBeRemoved = document.querySelector(".start-game");
-    // var liveToBeRemoved = document.querySelector(".side-content")
-    // liveToBeRemoved.remove();
+    var liveToBeRemoved = document.querySelector(".side-content")
+    liveToBeRemoved.remove();
     toBeRemoved.remove();
 
     //show actual value
@@ -192,36 +192,37 @@ function backF() {
     var toBeRemoved = document.querySelector(".slidercontainer");
     toBeRemoved.remove();
 
-    // var body = document.querySelector("body");
-    // var divSide = document.createElement("div");
-    // body.appendChild(divSide);
-    // //progress
-    // var p1 = document.createElement("p");
-    // p1.setAttribute("id", "in-progress");
-    // divSide.appendChild(p1);
-    // var p1Text = document.createTextNode("Games in progress: ");
-    // p1.appendChild(p1Text);
-    // var s1 = document.createElement("span");
-    // s1.setAttribute("id", "in-progress-value");
-    // p1.appendChild(s1);
-    // //played
-    // var p2 = document.createElement("p");
-    // p1.setAttribute("id", "played");
-    // divSide.appendChild(p2);
-    // var p2Text = document.createTextNode("Games played so far: ");
-    // p2.appendChild(p2Text);
-    // var s2 = document.createElement("span");
-    // s2.setAttribute("id", "played-value");
-    // p2.appendChild(s2);
-    // //waiting
-    // var p3 = document.createElement("p");
-    // p3.setAttribute("id", "waiting");
-    // divSide.appendChild(p3);
-    // var p3Text = document.createTextNode("Players waiting for a game: ");
-    // p3.appendChild(p3Text);
-    // var s3 = document.createElement("span");
-    // s3.setAttribute("id", "waiting-value");
-    // p3.appendChild(s3);
+    var body = document.querySelector("body");
+    var divSide = document.createElement("div");
+    divSide.setAttribute("class", "side-content");
+    body.appendChild(divSide);
+    //progress
+    var p1 = document.createElement("p");
+    p1.setAttribute("id", "in-progress");
+    divSide.appendChild(p1);
+    var p1Text = document.createTextNode("Games in progress: ");
+    p1.appendChild(p1Text);
+    var s1 = document.createElement("span");
+    s1.setAttribute("id", "in-progress-value");
+    p1.appendChild(s1);
+    //played
+    var p2 = document.createElement("p");
+    p1.setAttribute("id", "played");
+    divSide.appendChild(p2);
+    var p2Text = document.createTextNode("Games played so far: ");
+    p2.appendChild(p2Text);
+    var s2 = document.createElement("span");
+    s2.setAttribute("id", "played-value");
+    p2.appendChild(s2);
+    //waiting
+    var p3 = document.createElement("p");
+    p3.setAttribute("id", "waiting");
+    divSide.appendChild(p3);
+    var p3Text = document.createTextNode("Players waiting for a game: ");
+    p3.appendChild(p3Text);
+    var s3 = document.createElement("span");
+    s3.setAttribute("id", "waiting-value");
+    p3.appendChild(s3);
 
 
     //changes h1
