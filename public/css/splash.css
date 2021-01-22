@@ -1,159 +1,167 @@
 body {
-    padding: 50px;
-    font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
-    background-color: #f6fafa;
-  }
-  
-  a {
-    color: #00B7FF;
-  }
-  
-  h1 {
-    font-size: 8vmin;
-    line-height: 8px;
-  }
-  
-  .main-content {
-    margin-top: 10vh;
-    margin-left: 25vw;
-    margin-right: 25vw;
-    text-align: center;
-    position: relative;
-  }
-  
-  .start-game {
-    display: grid;
-    margin-top: 12vh;
-    column-gap: 7ch;
-    justify-content: center;
-  }
-  
-  .game-square {
-    width: 16vmin;
-    height: 16vmin;
-    grid-row: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 2.5vmin;
-    font-family: 'Roboto', sans-serif;
-    transition: transform .4s;
-    border-radius: 3px;
-  }
-  
-  .game-square:hover {
-    transform: scale(1.08);
-  }
-  
-  #new-game {
-    background-color: #fff;
-    box-shadow: 0px 0px 5px 5px #ccc;
-  }
+  padding: 50px;
+  font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
+  background-color: #f6fafa;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 2fr 1fr;
+  row-gap: 2ch;
+}
 
-  #new-game:hover {
+a {
+  color: #00B7FF;
+}
+
+h1 {
+  font-size: 10vmin;
+  line-height: 8px;
+}
+
+.main-content {
+  margin-top: 10vh;
+  margin-left: 25vw;
+  margin-right: 25vw;
+  text-align: center;
+  position: relative;
+  border: 1px solid black;
+  border-radius: 2%;
+  padding-bottom: 5ch;
+
+}
+
+.start-game {
+  display: grid;
+  margin-top: 12vh;
+  column-gap: 7ch;
+  justify-content: center;
+}
+
+.game-square {
+  width: 16vmin;
+  height: 16vmin;
+  grid-row: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 2.5vmin;
+  font-family: 'Roboto', sans-serif;
+  transition: transform .4s;
+  border-radius: 3px;
+}
+
+.game-square:hover {
+  transform: scale(1.08);
+}
+
+#new-game {
+  background-color: #fff;
+  box-shadow: 0px 0px 5px 5px #ccc;
+}
+
+#new-game:hover {
+  background-color: #4CAF50;
+  color: white;
+}
+
+#join-game {
+  background-color: #000;
+  color: white;
+  box-shadow: 0px 0px 9px 5px #999;
+}
+
+#join-game:hover {
     background-color: #4CAF50;
-    color: white;
-  }
-  
-  #join-game {
-    background-color: #000;
-    color: white;
-    box-shadow: 0px 0px 9px 5px #999;
-  }
+    color: #fff;
+}
 
-  #join-game:hover {
-      background-color: #4CAF50;
-      color: #fff;
-  }
-  
-  #board-image {
-    position: absolute;
-    height: 72vh;
-    width: auto;
-    box-shadow: 0px 0px 8px 6px #ccc;
-  }
-  
-  .board {
-    position: relative;
-    height: 640px;
-    width: 640px;
-  }
-  
-  .tiles {
-    display: grid;
-    height: 640px;
-    width: 640px;
-    grid-template-columns: repeat(auto-fill, 80px);
-  }
-  
-  .tile {
-    height: 80px;
-    width: 80px;
-  }
-  
-  .tile-black {
-    background-color: #AA7C56;
-  }
-  
-  .tile-white {
-    background: #E9D4B4;
-  }
-  
-  .piece {
-    position: absolute;
-    z-index: 3;
-    height: 80px;
-    width: 80px;
-  }
-  
-  /*
-  ###########################
-  ###########################
-  slider settings from now on
-  ###########################
-  ###########################
-  */
+#board-image {
+  position: absolute;
+  height: 72vh;
+  width: auto;
+  box-shadow: 0px 0px 8px 6px #ccc;
+}
 
-  .slidecontainer {
-    width: 100%;
+.board {
+  position: relative;
+  height: 640px;
+  width: 640px;
+}
+
+.tiles {
+  display: grid;
+  height: 640px;
+  width: 640px;
+  grid-template-columns: repeat(auto-fill, 80px);
+}
+
+.tile {
+  height: 80px;
+  width: 80px;
+}
+
+.tile-black {
+  background-color: #AA7C56;
+}
+
+.tile-white {
+  background: #E9D4B4;
+}
+
+.piece {
+  position: absolute;
+  z-index: 3;
+  height: 80px;
+  width: 80px;
+}
+
+/*
+###########################
+###########################
+slider settings from now on
+###########################
+###########################
+*/
+
+.slidecontainer {
+  width: 100%;
 }
 
 .slider {
-    -webkit-appearance: none;
-    appearance: none;
-    display: block;
-    margin-left: auto;
-    margin-right: auto;
-    width: 60%;
-    height: 25px;
-    border-radius: 5px;
-    background: #d3d3d3;
-    outline: none;
-    opacity: 0.7;
-    -webkit-transition: .2s;
-    transition: opacity .2s;
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 60%;
+  height: 25px;
+  border-radius: 5px;
+  background: #d3d3d3;
+  outline: none;
+  opacity: 0.7;
+  -webkit-transition: .2s;
+  transition: opacity .2s;
 }
 
 .slider:hover {
-    opacity: 1;
+  opacity: 1;
 }
 
 .slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 25px;
-    height: 25px;
-    border-radius: 50%;
-    background: #4CAF50; 
-    cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  background: #4CAF50; 
+  cursor: pointer;
 }
 
 .slider::-moz-range-thumb {
-    width: 25px; /* Set a specific slider handle width */
-    height: 25px; /* Slider handle height */
-    border-radius: 50%;
-    background: #4CAF50; /* Green background */
-    cursor: pointer; /* Cursor on hover */
+  width: 25px; /* Set a specific slider handle width */
+  height: 25px; /* Slider handle height */
+  border-radius: 50%;
+  background: #4CAF50; /* Green background */
+  cursor: pointer; /* Cursor on hover */
 }
 
 /*
@@ -165,79 +173,118 @@ The new stuff
 */
 
 #first-par {
-    padding-top: 40px;
+  padding-top: 40px;
 }
 
 .menu-controls:hover {
-    transform: scale(1.08);
+  transform: scale(1.08);
 }
 
 .menu-controls {
-    width: 16vmin;
-    height: 16vmin;
-    grid-row: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 2.5vmin;
-    font-family: 'Roboto', sans-serif;
-    transition: transform .4s;
-    border-radius: 3px;
+  width: 16vmin;
+  height: 16vmin;
+  grid-row: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 2.5vmin;
+  font-family: 'Roboto', sans-serif;
+  transition: transform .4s;
+  border-radius: 3px;
 }
 
 .controls {
-    display: grid;
-    margin-top: 2vh;
-    column-gap: 20ch;
-    justify-content: center;
+  display: grid;
+  margin-top: 2vh;
+  column-gap: 20ch;
+  justify-content: center;
 }
 
 .game-type {
-    display: grid;
-    margin-top: 2vh;
-    column-gap: 5ch;
-    justify-content: center;
-
-
+  display: grid;
+  margin-top: 2vh;
+  column-gap: 5ch;
+  justify-content: center;
 }
 
 .list-el {
-    width: 16vmin;
-    height: 16vmin;
-    grid-row: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 2.5vmin;
-    font-family: 'Roboto', sans-serif;
-    transition: transform .4s;
-    border-radius: 3px;
+  width: 16vmin;
+  height: 16vmin;
+  grid-row: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 2.5vmin;
+  font-family: 'Roboto', sans-serif;
+  transition: transform .4s;
+  border-radius: 3px;
 }
 
 .list-el:hover {
-    transform: scale(1.03);
+  transform: scale(1.03);
+  border: 1px solid grey;
 }
 
 #back-button {
-    background-color: #fff;
-    box-shadow: 0px 0px 5px 5px #ccc;
+  background-color: #fff;
+  box-shadow: 0px 0px 5px 5px #ccc;
 }
 
 #start-button {
-    background-color: #000;
-    color: #fff;
-    box-shadow: 0px 0px 5px 5px #ccc;
+  background-color: #000;
+  color: #fff;
+  box-shadow: 0px 0px 5px 5px #ccc;
 }
 
 #back-button:hover {
-    background-color: #4CAF50;
-    color: white;
+  background-color: #4CAF50;
+  color: white;
 }
 
 #start-button:hover {
-    background-color: #4CAF50;
-    color: white;
+  background-color: #4CAF50;
+  color: white;
 }
 
+/*
+###########################
+###########################
+TESTS
+###########################
+###########################
+*/
+.side-content {
+margin-top: 10vh;
+margin-left: 25vw;
+margin-right: 25vw;
+text-align: center;
+position: relative;
+border: 1px solid black;
+border-radius: 2%;
+padding-bottom: 5%ch;
+}
+/*
+.main-content {
+border: 5px solid green;
+background: white;
+}
 
+.start-game {
+border: 5px solid orange;
+}
 
+.description {
+border: 5px solid blue;
+}
+
+body {
+display: grid;
+grid-template-rows: 1fr;
+grid-template-columns: 3fr 5fr 3fr;
+}
+
+.side {
+border: 1px solid red;
+display: block;
+background: gray;
+} */

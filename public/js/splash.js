@@ -300,3 +300,16 @@ function startGame() {
     localStorage.setItem('gameSide', side);
     window.location.href = '/game';
 }
+
+setInterval(function() {
+    var request = new XMLHttpRequest();
+    request.open('GET', '/stats');
+    request.responseText = 'json';
+    request.send();
+    request.onload = function() {
+        var message = JSON.parse(request.response);
+        // contains all stats..
+        console.log(message.gamesPlayed)
+    }
+}, 3000); 
+
