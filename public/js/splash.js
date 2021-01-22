@@ -301,15 +301,18 @@ function startGame() {
     window.location.href = '/game';
 }
 
-setInterval(function() {
+function requestUpdateStats() {
     var request = new XMLHttpRequest();
     request.open('GET', '/stats');
     request.responseText = 'json';
     request.send();
     request.onload = function() {
         var message = JSON.parse(request.response);
-        // contains all stats..
-        console.log(message.gamesPlayed)
+        document.getElementById('played-value').innerHTML = message.gamesPlayed;
+        document.getElementById('in-progress-value').innerHTML = message.gamesRunning;
     }
-}, 3000); 
+}
+
+requestUpdateStats();
+setInterval(requestUpdateStats, 3000); 
 
