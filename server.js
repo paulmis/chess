@@ -119,6 +119,7 @@ wss.on("connection", function connection(ws, req) {
                 var gameUid = uuidv4();
                 console.log(message.time, message.increment, message.side);
                 games.set(gameUid, new Game(ws.uid, message.time, message.increment, message.side));
+                startGame(gameUid);
                 console.log('CREATED ', games.get(gameUid));
                 ws.send(JSON.stringify({
                     'type': 'created',

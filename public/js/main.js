@@ -422,7 +422,7 @@ socket.onmessage = function(event) {
             document.getElementById('game-type').innerHTML = time + ' + ' + increment;
 
             // Set general info
-            boardDiv.addEventListener("pieceMove", boardOnClick);
+            boardDiv.addEventListener('click', boardOnClick);
             document.getElementById('general-message').innerHTML = ''
             gameUid = message.gameUid;
             break;
@@ -432,7 +432,7 @@ socket.onmessage = function(event) {
             break;
         case 'finished':
             document.getElementById('general-message').innerHTML = 'game finished - ' + message.winner + ' won!';
-            boardDiv.removeEventListener("pieceMove", boardOnClick, { passive: true });
+            boardDiv.removeEventListener('click', boardOnClick);
             break;   
         default:
             console.error('Unrecognized server message ', message.type); 
