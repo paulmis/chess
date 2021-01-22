@@ -400,8 +400,8 @@ class Board {
         var affected = this.attackedBy.get(pos).filter(pos => this.getPiece(pos).isLine());
         for (var apos of affected)
             this.deinitPieceAttacks(apos);
-        this.getOppositePlayer().lostPieces.push(this.getPiece(pos));
         this.getTile(pos).deletePiece();
+        this.getOppositePlayer().lostPieces.push(this.getPiece(pos));
         for (var apos of affected)
             this.initPieceAttacks(apos);
     }
@@ -575,7 +575,7 @@ class Board {
                 // If it's the king moving, save that information
                 if (this.getPiece(from).getType() == 'king')
                 {
-                    this.getCurrentPosition().kingMoved = true;
+                    this.getCurrentPlayer().kingMoved = true;
                     // If the move is a castle, move the rook first and set castle variables
                     if (Math.abs(from.x - to.x) == 2)
                     {
@@ -590,6 +590,14 @@ class Board {
 
                 // Execute the move
                 this.physicalMovePiece(from, to);
+
+                // If it's a pawn promotion, delete the piece and replace it with a queen
+                if (this.getPiece(to).getType() == 'pawn' && to.y == (this.getPiece(to).getColor() == 'white' ? 8 : 1)) {
+                    this.physicalRemovePiece(to);
+                    this.physicalAddPiece(to, new Piece(this.currentPlayerColor, 'queen'));
+                }
+
+                // Set variables
                 this.currentPlayerColor = this.getOppositePlayerColor();
                 this.setCurrentPosition(null);
                 return true;

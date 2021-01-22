@@ -1,4 +1,4 @@
-const socket = new WebSocket('ws://localhost:3000');
+const socket = new WebSocket('ws://17b56118c5e2.eu.ngrok.io');
 const boardDiv = document.querySelector('.board')
 const tiles = document.querySelector('.tiles')
 const pieces = document.querySelector('.pieces')
@@ -273,6 +273,7 @@ class Board {
         if (!this.getPiece(pos))
             throw 'pieceRemove but the tile doesn\'t have a piece';
         this.getOppositePlayer().lostPieces.push(this.getPiece(pos));
+        this.getTile(pos).deletePiece();
     }
 
     // Draws the change on the game screens
@@ -286,6 +287,8 @@ class Board {
     physicalMovePiece(from, to) {
         if (!this.getPiece(from))
             throw 'pieceMove but the starting tile doesn\'t have a piece';
+        if (this.hasPiece(to))
+            this.getOppositePlayer().lostPieces.push(this.getPiece(to));
         this.getTile(from).movePiece(this.getTile(to));
     }
 
@@ -299,7 +302,7 @@ class Board {
         // If it's the king moving, save that information
         if (this.getPiece(from).getType() == 'king')
         {
-            this.getCurrentPosition().kingMoved = true;
+            this.getCurrentPlayer().kingMoved = true;
             // If the move is a castle, move the rook first and set castle variables
             if (Math.abs(from.x - to.x) == 2)
             {
@@ -314,6 +317,13 @@ class Board {
 
         // Execute the move
         this.physicalMovePiece(from, to);
+
+        // If it's a pawn promotion, delete the piece and replace it with a queen
+        if (this.getPiece(to).getType() == 'pawn' && to.y == (this.getPiece(to).getColor() == 'white' ? 8 : 1)) {
+            this.physicalRemovePiece(to);
+            this.physicalAddPiece(to, new Piece(this.currentPlayerColor, 'queen'));
+        }
+
         this.currentPlayerColor = this.getOppositePlayerColor();
         this.setCurrentPosition(null);
     }
@@ -330,29 +340,33 @@ function onClick(event) {
     var x = Math.floor((event.clientX - box.x) / 80), y = Math.floor((event.clientY - box.y) / 80);
     let newPosition = new Position(x + 1, board.view == 'white' ? 8 - y : 1 + y); 
 
-    if (currentPosition != null)
-    {
-        if (side == board.getCurrentPlayerColor() && (!board.hasPiece(newPosition) || board.getPiece(newPosition).getColor() != board.getCurrentPlayerColor())) {
-            socket.send(JSON.stringify({
-                'type': 'move',
-                'gameUid': gameUid,
-                'from': {
-                    'x': currentPosition.x,
-                    'y': currentPosition.y
-                },
-                'to': {
-                    'x': newPosition.x,
-                    'y': newPosition.y
-                }
-            }));
-        }
+    if (board.getCurrentPlayerColor() == side) {
+        if (currentPosition != null) {
+            if (side == board.getCurrentPlayerColor() && (!board.hasPiece(newPosition) || board.getPiece(newPosition).getColor() != board.getCurrentPlayerColor())) {
+                socket.send(JSON.stringify({
+                    'type': 'move',
+                    'gameUid': gameUid,
+                    'from': {
+                        'x': currentPosition.x,
+                        'y': currentPosition.y
+                    },
+                    'to': {
+                        'x': newPosition.x,
+                        'y': newPosition.y
+                    }
+                }));
+            }
 
-        else if (board.hasPiece(newPosition))
-            board.resetCurrentPosition();
+            else if (board.hasPiece(newPosition)) {
+                if (newPosition.equals(currentPosition)) board.resetCurrentPosition();
+                else board.setCurrentPosition(newPosition);
+            }
+                
+        }
+            
+        else if (board.hasPiece(newPosition) && board.getPiece(newPosition).getColor() == board.getCurrentPlayerColor())
+            board.setCurrentPosition(newPosition);
     }
-        
-    else if (board.hasPiece(newPosition) && board.getPiece(newPosition).getColor() == board.getCurrentPlayerColor())
-        board.setCurrentPosition(newPosition);
 }
 
 // Generate a new board and initiate it with default pieces
