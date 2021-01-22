@@ -183,7 +183,8 @@ function createF() {
 }
 
 function joinF() {
-    alert("No ongoing games at the moment \\(◕◡◕)/");
+    localStorage.setItem('joinGame', 'true');
+    window.location.href = '/game';
 }
 
 function backF() {
@@ -287,26 +288,15 @@ function randomCheck() {
 
 //start
 function startGame() {
-    //info to send
-    var time = document.getElementById("valueOfSlider").value;
-    var interval = document.getElementById("valueOfSlider2").value;
-    var side = "";
-
     //other shit
-    var whites = document.getElementById("whites");
-    var blacks = document.getElementById("blacks");
-    if (whites.checked === true) {
-        side = "white";
-    } else if (blacks.checked === true) {
-        side = "black";
-    } else {
-        side = "random";
-    }
+    var side = "";
+    if (document.getElementById("whites").checked === true) side = 'white';
+    else if (document.getElementById("blacks").checked === true) side = 'black';
+    else side = 'random';
 
-    var message = {
-        "time": time.innerHTML,
-        "interval": interval.innerHTML,
-        "side": side.innerHTML
-    }
-
+    console.log('slider ', document.getElementById("valueOfSlider2").innerHTML);
+    localStorage.setItem('gameTime', document.getElementById("valueOfSlider").innerHTML);
+    localStorage.setItem('gameIncrement', document.getElementById("valueOfSlider2").innerHTML);
+    localStorage.setItem('gameSide', side);
+    window.location.href = '/game';
 }
