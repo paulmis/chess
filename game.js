@@ -632,6 +632,9 @@ class Game {
         this.addPlayer(founder, this.startingColor);
     }
 
+    getTime() { return this.time; }
+    getIncrement() { return this.increment; }
+
     // Adds a player and returns its uid
     addPlayer(uid, color) {
         if (this.playerUids.size > 1)

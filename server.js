@@ -52,6 +52,8 @@ function startGame(gameUid) {
             players.get(playerUid).send(JSON.stringify({
                 'type': 'start',
                 'gameUid': gameUid,
+                'time': game.getTime(),
+                'increment': game.getIncrement(),
                 'side': color
             }));
         }
@@ -115,6 +117,7 @@ wss.on("connection", function connection(ws, req) {
             // Create a new game
             case 'create':
                 var gameUid = uuidv4();
+                console.log(message.time, message.increment, message.side);
                 games.set(gameUid, new Game(ws.uid, message.time, message.increment, message.side));
                 console.log('CREATED ', games.get(gameUid));
                 ws.send(JSON.stringify({

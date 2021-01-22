@@ -333,8 +333,10 @@ class Board {
 let board = new Board();
 let side = 'white';
 let gameUid = null;
+let time = null;
+let increment = null;
 
-function onClick(event) {
+function boardOnClick(event) {
     let box = boardDiv.getBoundingClientRect();
     let currentPosition = board.getCurrentPosition();
     var x = Math.floor((event.clientX - box.x) / 80), y = Math.floor((event.clientY - box.y) / 80);
@@ -381,18 +383,19 @@ if (localStorage.getItem('joinGame')) {
         'type': 'join'
     }))
 } else {
-    socket.onopen = () => socket.send(JSON.stringify({
+    var message = {
         'type': 'create',
         'time': localStorage.getItem('gameTime'),
         'increment': localStorage.getItem('gameIncrement'),
         'side': localStorage.getItem('gameSide')
-    }));
+    }; // for whatever reason the onopen function cannot directrly capture localStorage
+    socket.onopen = () => socket.send(JSON.stringify(message));
 }
 
 localStorage.removeItem('joinGame');
-localStorage.getItem('gameTime');
-localStorage.getItem('gameIncrement');
-localStorage.getItem('gameSide');
+localStorage.removeItem('gameTime');
+localStorage.removeItem('gameIncrement');
+localStorage.removeItem('gameSide');
 
 socket.onmessage = function(event) {
     var message = JSON.parse(event.data);
@@ -405,11 +408,21 @@ socket.onmessage = function(event) {
             document.getElementById('general-message').innerHTML = 'waiting for another player to start a game...';
             break;
         case 'start':
-            if (message.side != side) {
+            // If starting with black, reverse the board
+            if (message.side == 'black') {
                 side = message.side;
                 board.generateView(tiles, side);
             }
-            boardDiv.addEventListener("click", onClick);
+
+            // Set time info
+            time = message.time;
+            increment = message.increment;
+            document.getElementById('enemy-timer').innerHTML = time;
+            document.getElementById('own-timer').innerHTML = time;
+            document.getElementById('game-type').innerHTML = time + ' + ' + increment;
+
+            // Set general info
+            boardDiv.addEventListener("pieceMove", boardOnClick);
             document.getElementById('general-message').innerHTML = ''
             gameUid = message.gameUid;
             break;
@@ -419,7 +432,9 @@ socket.onmessage = function(event) {
             break;
         case 'finished':
             document.getElementById('general-message').innerHTML = 'game finished - ' + message.winner + ' won!';
-        case 'updateStats':
-            // update stats
+            boardDiv.removeEventListener("pieceMove", boardOnClick, { passive: true });
+            break;   
+        default:
+            console.error('Unrecognized server message ', message.type); 
     }
 }

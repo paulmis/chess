@@ -294,7 +294,6 @@ function startGame() {
     else if (document.getElementById("blacks").checked === true) side = 'black';
     else side = 'random';
 
-    console.log('slider ', document.getElementById("valueOfSlider2").innerHTML);
     localStorage.setItem('gameTime', document.getElementById("valueOfSlider").innerHTML);
     localStorage.setItem('gameIncrement', document.getElementById("valueOfSlider2").innerHTML);
     localStorage.setItem('gameSide', side);
